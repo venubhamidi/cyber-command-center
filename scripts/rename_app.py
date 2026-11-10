@@ -41,7 +41,7 @@ def main(new: str) -> int:
         (rf"\b{o}\.main:app\b", f"{new}.main:app"),
         (rf"(APP_PACKAGE[=:]\s*(?:\$\{{APP_PACKAGE:-)?){o}\b", rf"\1{new}"),
         (rf"(app_package\s*=\s*\"){o}\"", rf'\1{new}"'),
-        (rf"(?<![\w./-]){o}/(?=[A-Za-z_.*])", f"{new}/"),               # paths in docs: app/config.py
+        (rf"(?<![\w./-]){o}/(?=[A-Za-z_.*`])", f"{new}/"),              # paths in docs: app/config.py, `app/`
         (rf"(\[\"|\"){o}\.plugins\.", rf"\1{new}.plugins."),
     ]
     changed = 0
