@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    name: Structure, lint, tests, evals
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U app" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_TEST_DATABASE_URL: postgresql://app:app@localhost:5432/app_test
+      APP_DATABASE_URL: postgresql://app:app@localhost:5432/app_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements-dev.txt
+      - name: Harness contract (required files, unmodified harness, documented settings, evals exist)
+        run: python scripts/check_structure.py
+      - name: Lint
+        run: ruff check .
+      - name: Tests
+        run: python -m pytest -q
+      - name: Agent evaluations (mock model)
+        run: |
+          APP_PACKAGE=$(python -c "import tomllib;print(tomllib.load(open('pyproject.toml','rb'))['tool']['harness']['app_package'])")
+          python -m harness.migrate "$APP_PACKAGE"
+          python -m harness.evals "$APP_PACKAGE" --min-score 1.0
+
+  frontend:
+    name: Frontend typecheck and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  containers:
+    name: Build images, start with docker compose, check health
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp deploy/.env.example deploy/.env
+      - name: Build and start
+        run: docker compose -f deploy/docker-compose.yml up --build --detach --wait --wait-timeout 180
+      - name: API answers through the web container
+        run: |
+          curl --fail --silent http://localhost:8080/api/v1/platform/health
+          curl --fail --silent --output /dev/null http://localhost:8080/
+      - name: Containers do not run as root
+        run: |
+          test "$(docker compose -f deploy/docker-compose.yml exec -T api id -u)" != "0"
+          test "$(docker compose -f deploy/docker-compose.yml exec -T web id -u)" != "0"
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -f deploy/docker-compose.yml logs --no-color
+      - if: always()
+        run: docker compose -f deploy/docker-compose.yml down --volumes

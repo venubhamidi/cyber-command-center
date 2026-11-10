@@ -1,0 +1,25 @@
+# API image: the harness plus one application package. Build from the repository root:
+#   docker build -f deploy/Dockerfile.api --build-arg APP_PACKAGE=ccc -t myapp-api .
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+WORKDIR /srv
+
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+ARG APP_PACKAGE=ccc
+ENV APP_PACKAGE=${APP_PACKAGE}
+COPY harness/ harness/
+COPY ${APP_PACKAGE}/ ${APP_PACKAGE}/
+
+# Never run as root.
+RUN useradd --system --uid 10001 --no-create-home appuser
+USER 10001
+
+EXPOSE 8000
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=5 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/platform/health', timeout=2)"
+
+# Migrations run first; the API starts only if they succeed.
+CMD ["sh", "-c", "python -m harness.migrate \"$APP_PACKAGE\" && exec uvicorn \"$APP_PACKAGE.main:app\" --host 0.0.0.0 --port 8000"]

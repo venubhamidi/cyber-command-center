@@ -1,0 +1,7 @@
+enterprise_asset_id,hostname,ip_address,mac_address,asset_type,asset_owner,business_unit,business_service,criticality,location,environment,operating_system
+EA-000001,fin-erp-db01,10.20.1.15,00:1A:2B:3C:4D:01,database,j.alvarez,Finance,ERP,critical,Detroit DC1,production,Oracle Linux 8
+EA-000002,fin-erp-app01,10.20.1.21,00:1A:2B:3C:4D:02,server,j.alvarez,Finance,ERP,critical,Detroit DC1,production,Windows Server 2022
+EA-000003,hr-portal-web01,10.20.2.40,00:1A:2B:3C:4D:03,server,,Human Resources,HR Portal,high,Detroit DC1,production,Ubuntu 22.04
+EA-000004,LT-ENG-04471,10.30.5.112,00:1A:2B:3C:4D:04,endpoint,m.chen,Engineering,Workstation,medium,Remote,production,Windows 11
+EA-000005,plant1-plc-07,192.168.50.7,,plc,r.okafor,Manufacturing,Line 1 Assembly,critical,Plant 1,production,
+EA-000006,gcp-prj-analytics,,,gcp_project,s.patel,Data & Analytics,Analytics Platform,unknown,GCP us-east1,production,

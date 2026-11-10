@@ -1,0 +1,55 @@
+# Starts the whole application on one machine:
+#   cp deploy/.env.example deploy/.env      (once; then edit)
+#   docker compose -f deploy/docker-compose.yml up --build
+# then open http://localhost:8080
+#
+# This is for local use and CI. Production runs the same two images on your cluster with your
+# managed PostgreSQL, single sign-on and secrets; see README.md.
+name: ${APP_PACKAGE:-app}
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: app
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+      args:
+        APP_PACKAGE: ${APP_PACKAGE:-ccc}
+    env_file: .env
+    environment:
+      APP_DATABASE_URL: postgresql://app:${POSTGRES_PASSWORD}@db:5432/app
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+volumes:
+  db-data:

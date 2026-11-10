@@ -1,0 +1,17 @@
+[tool.harness]
+# The Python package that holds this repository's application. Used by the deploy files,
+# scripts/check_structure.py and CI. Change it when you rename app/ for a new application.
+app_package = "ccc"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["frontend", "node_modules"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "B008"]  # B008: FastAPI Depends() in defaults is the framework idiom
+
+[tool.pytest.ini_options]
+testpaths = ["harness/tests", "tests"]
+pythonpath = ["."]
