@@ -1,0 +1,10 @@
+{"source_system": "mock_history", "kind": "kpi_snapshots", "collected_at": "2026-11-09T23:00:00Z", "records": [
+ {"kpi": "enterprise_risk_score", "period_date": "2026-11-09", "value": 61.2, "formula_version": "v0", "source_systems": ["mock_tenable", "mock_sccm", "mock_grc", "mock_chronicle"]},
+ {"kpi": "security_posture", "period_date": "2026-11-09", "value": 38.8, "formula_version": "v0", "source_systems": ["mock_tenable", "mock_sccm", "mock_grc", "mock_chronicle"]},
+ {"kpi": "patch_compliance", "period_date": "2026-11-09", "value": 33.3, "formula_version": "v0", "source_systems": ["mock_sccm"]},
+ {"kpi": "vulnerability_exposure", "period_date": "2026-11-09", "value": 9, "formula_version": "v0", "source_systems": ["mock_tenable"]},
+ {"kpi": "nist_compliance", "period_date": "2026-11-09", "value": 54.5, "formula_version": "v0", "source_systems": ["mock_grc"]},
+ {"kpi": "critical_assets", "period_date": "2026-11-09", "value": 3, "formula_version": "v0", "source_systems": ["asset_db_csv"]},
+ {"kpi": "open_incidents", "period_date": "2026-11-09", "value": 3, "formula_version": "v0", "source_systems": ["mock_chronicle"]},
+ {"kpi": "remediation_sla", "period_date": "2026-11-09", "value": 50.0, "formula_version": "v0", "source_systems": ["mock_tenable"]}
+]}

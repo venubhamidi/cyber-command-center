@@ -21,6 +21,12 @@ class Settings(HarnessSettings):
     redact_patterns: list[str] = ["ipv4", "mac", "email"]
     # Read-only MVP (PRD §12): the platform opens no tickets until Phase 2.
     ticketing_provider: str = "none"
+    # Source connectors for the dashboard tables (ARCHITECTURE.md, executive dashboard). Mocks until
+    # the real integrations exist; a real one replaces a mock here, nothing else changes.
+    plugin_modules: list[str] = ["ccc.plugins.mock_connectors"]
+    connectors: list[str] = ["mock_tenable", "mock_sccm", "mock_grc", "mock_chronicle", "mock_risk", "mock_history"]
+    # Remediation SLA, days from first sighting, by severity (D-038).
+    sla_days: dict[str, int] = {"critical": 7, "high": 30, "medium": 90, "low": 180}
 
 
 settings = Settings()

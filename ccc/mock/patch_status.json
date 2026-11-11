@@ -1,0 +1,8 @@
+{"source_system": "mock_sccm", "kind": "patch_status", "collected_at": "2026-11-10T05:30:00Z", "records": [
+ {"source_record_id": "SCCM-1", "enterprise_asset_id": "EA-000001", "state": "compliant", "missing_count": 0},
+ {"source_record_id": "SCCM-2", "enterprise_asset_id": "EA-000002", "state": "missing", "missing_count": 3},
+ {"source_record_id": "SCCM-3", "enterprise_asset_id": "EA-000003", "state": "failed", "missing_count": 2},
+ {"source_record_id": "SCCM-4", "enterprise_asset_id": "EA-000004", "state": "unknown", "missing_count": 0},
+ {"source_record_id": "SCCM-5", "enterprise_asset_id": "EA-000005", "state": "exempt", "missing_count": 0},
+ {"source_record_id": "SCCM-6", "enterprise_asset_id": "EA-000006", "state": "offline", "missing_count": 0}
+]}
