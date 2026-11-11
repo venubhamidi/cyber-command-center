@@ -234,3 +234,30 @@ def test_top_five_risks_are_ordered_by_rating_then_recency_with_the_prd_fields(c
     assert first["business_impact"] and first["last_updated"].startswith("2026-11-10") and first["model_version"] == "mock-v0"
     assert risks[2]["owner"] is None                                         # an unowned risk stays unowned
     assert risks[4]["affected_assets"] == ["EA-000001", "EA-000002", "EA-000003"]
+
+
+# --- Ticket 06: drill-down lists -----------------------------------------------------------------
+
+@pytest.mark.parametrize("path,allowed,denied,total", [
+    ("/api/v1/findings", CISO, CIO, 15),            # CIO sees the exposure count but has no vulns:read
+    ("/api/v1/patch-status", {"Authorization": "Bearer dev-admin-token"}, CISO, 6),   # CISO lacks patch:read
+    ("/api/v1/controls", AUDITOR, CIO, 12),
+    ("/api/v1/incidents", {"Authorization": "Bearer dev-admin-token"}, CISO, 4),
+    ("/api/v1/risks", BIZ, AUDITOR, 6),
+])
+def test_each_drilldown_list_keeps_its_module_permission_and_paginates(client, path, allowed, denied, total):
+    assert client.get(path).status_code == 401
+    assert client.get(path, headers=denied).status_code == 403
+    assert client.get(f"{path}?limit=0", headers=allowed).status_code == 422
+    body = client.get(f"{path}?limit=2", headers=allowed).json()
+    assert body["total"] == total and len(body["items"]) == 2
+    for item in body["items"]:
+        assert item["source_system"].startswith("mock_") and item["source_record_id"] and item["data_quality_status"] == "ok"
+
+
+def test_findings_list_names_the_asset_by_enterprise_id_and_carries_the_due_date(client):
+    items = client.get("/api/v1/findings?limit=500", headers=CISO).json()["items"]
+    critical = [f for f in items if f["severity"] == "critical"]
+    assert len(critical) == 5 and items[0]["severity"] == "critical"
+    ten1 = next(f for f in items if f["source_record_id"] == "TEN-10001")
+    assert ten1["enterprise_asset_id"] == "EA-000001" and ten1["due_at"].startswith("2026-10-27")

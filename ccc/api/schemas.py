@@ -126,3 +126,56 @@ class Dashboard(BaseModel):
     generated_at: datetime
     kpis: list[Kpi]
     top_risks: list[TopRisk]
+
+
+class Provenance(BaseModel):
+    """PRD §7 provenance on every record a drill-down list shows."""
+
+    source_system: str
+    source_record_id: str
+    collected_at: datetime
+    updated_at: datetime
+    data_quality_status: str
+
+
+class Finding(Provenance):
+    enterprise_asset_id: str
+    cve: str | None
+    title: str
+    severity: str
+    cvss: float | None
+    exploitable: bool | None
+    known_exploited: bool | None
+    status: str
+    first_seen_at: datetime
+    last_seen_at: datetime
+    due_at: datetime | None
+    closed_at: datetime | None
+
+
+class PatchStatus(Provenance):
+    enterprise_asset_id: str
+    state: str
+    missing_count: int
+
+
+class ControlAssessment(Provenance):
+    framework: str
+    control_id: str
+    title: str
+    status: str
+    effectiveness: str | None
+    assessor: str | None
+    assessed_at: datetime | None
+
+
+class Incident(Provenance):
+    title: str
+    severity: str
+    status: str
+    opened_at: datetime
+    closed_at: datetime | None
+
+
+class Risk(Provenance, TopRisk):
+    pass

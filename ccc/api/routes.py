@@ -9,11 +9,16 @@ from ccc.api.schemas import (
     Asset,
     AssetDetail,
     AssetSummary,
+    ControlAssessment,
     Dashboard,
     DataCompleteness,
+    Finding,
     HistoryEntry,
+    Incident,
     Kpi,
     Me,
+    PatchStatus,
+    Risk,
     SourceSystemRecord,
     TopRisk,
     UsageRow,
@@ -63,6 +68,44 @@ def dashboard(_: Principal = Depends(require("dashboard:read")), db: str = Depen
                          drilldown=drilldown, formula_version=k.formula_version,
                          mock=any(s.startswith("mock_") for s in k.source_systems)))
     return Dashboard(generated_at=now, kpis=tiles, top_risks=[TopRisk(**r) for r in risks])
+
+
+# Drill-down lists (D-040): plain, read-only, newest first, each behind its module's permission.
+# Filters arrive with each module's own slice.
+PROVENANCE = "source_system, source_record_id, collected_at, updated_at, data_quality_status::text AS data_quality_status"
+LISTS: dict[str, tuple[str, str, type, str]] = {
+    "findings": ("vulns:read", f"""SELECT a.enterprise_asset_id, f.cve, f.title, f.severity::text, f.cvss::float, f.exploitable,
+        f.known_exploited, f.status::text, f.first_seen_at, f.last_seen_at, f.due_at, f.closed_at, f.{PROVENANCE.replace(', ', ', f.')}
+        FROM findings f JOIN assets a ON a.id = f.asset_id ORDER BY f.severity, f.last_seen_at DESC, f.id""", Finding, "findings"),
+    "patch-status": ("patch:read", f"""SELECT a.enterprise_asset_id, p.state::text, p.missing_count, p.{PROVENANCE.replace(', ', ', p.')}
+        FROM patch_status p JOIN assets a ON a.id = p.asset_id ORDER BY a.enterprise_asset_id, p.source_system""", PatchStatus, "patch_status"),
+    "controls": ("controls:read", f"""SELECT framework, control_id, title, status::text, effectiveness, assessor, assessed_at, {PROVENANCE}
+        FROM control_assessments ORDER BY framework, control_id""", ControlAssessment, "control_assessments"),
+    "incidents": ("incidents:read", f"""SELECT title, severity::text, status::text, opened_at, closed_at, {PROVENANCE}
+        FROM incidents ORDER BY status, opened_at DESC""", Incident, "incidents"),
+    "risks": ("risks:read", f"""SELECT r.title, r.business_unit, r.business_service, r.rating::text, r.business_impact, r.owner,
+        r.recommended_action, r.updated_at AS last_updated, r.model_version, r.{PROVENANCE.replace(', ', ', r.')},
+        COALESCE(array_agg(a.enterprise_asset_id ORDER BY a.enterprise_asset_id) FILTER (WHERE a.id IS NOT NULL), '{{}}') AS affected_assets
+        FROM risks r LEFT JOIN risk_assets ra ON ra.risk_id = r.id LEFT JOIN assets a ON a.id = ra.asset_id
+        GROUP BY r.id ORDER BY r.rating, r.updated_at DESC""", Risk, "risks"),
+}
+
+
+def _list_route(name: str, permission: str, sql: str, model: type, table: str):
+    def route(_: Principal = Depends(require(permission)), db: str = Depends(db_url),
+              limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0)) -> Page[model]:
+        with get_conn(db) as conn:
+            total = conn.execute(f"SELECT count(*) AS n FROM {table}").fetchone()["n"]
+            rows = conn.execute(f"{sql} LIMIT %s OFFSET %s", (limit, offset)).fetchall()
+        return Page(items=[model(**r) for r in rows], total=total, limit=limit, offset=offset)
+
+    route.__name__ = f"list_{name.replace('-', '_')}"
+    route.__doc__ = f"Drill-down from the dashboard (D-040): every {table} record with its provenance, no filters yet."
+    router.add_api_route(f"/{name}", route, methods=["GET"], response_model=Page[model])
+
+
+for _name, (_perm, _sql, _model, _table) in LISTS.items():
+    _list_route(_name, _perm, _sql, _model, _table)
 
 
 ASSET_SELECT = """
