@@ -42,7 +42,7 @@ table.assets { width: 100%; border-collapse: collapse; background: var(--panel);
 
 button { background: transparent; color: var(--accent); border: 1px solid var(--line); border-radius: 6px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
 button:hover { border-color: var(--accent); }
-.review { margin-top: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; font-size: 14px; line-height: 1.5; }
-.review h2 { margin: 0 0 8px; font-size: 15px; }
-.review p { margin: 6px 0; overflow-wrap: anywhere; }
+.brief { margin-top: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; font-size: 14px; line-height: 1.5; }
+.brief h2 { margin: 0 0 8px; font-size: 15px; }
+.brief p { margin: 6px 0; overflow-wrap: anywhere; }
 .advisory { margin-left: 8px; font-size: 11px; font-weight: 600; color: var(--warn); border: 1px solid #5a4312; border-radius: 999px; padding: 1px 8px; vertical-align: middle; }

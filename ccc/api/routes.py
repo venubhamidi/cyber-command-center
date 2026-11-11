@@ -67,9 +67,9 @@ def get_asset(asset_id: int, _: Principal = Depends(require("assets:read")), db:
     return Asset(**row)
 
 
-@router.post("/assets/{enterprise_asset_id}/review", response_model=AgentResponse)
-def review_asset(enterprise_asset_id: str, p: Principal = Depends(require("agents:run"))) -> AgentResponse:
-    """Run the Asset Summary Agent on one asset. Advisory: nothing is changed (PRD §12 read-only MVP)."""
+@router.post("/assets/{enterprise_asset_id}/brief", response_model=AgentResponse)
+def brief_asset(enterprise_asset_id: str, p: Principal = Depends(require("agents:run"))) -> AgentResponse:
+    """A brief on one asset from the Asset Summary Agent (PRD Module 7). Advisory: nothing is changed (PRD §12)."""
     return summarize_asset(enterprise_asset_id, requested_by=p.subject)
 
 

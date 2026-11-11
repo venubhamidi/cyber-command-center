@@ -89,12 +89,13 @@ def test_agent_does_not_write_to_assets():
         assert conn.execute("SELECT * FROM assets ORDER BY id").fetchall() == before
 
 
-def test_review_endpoint_runs_the_agent_over_real_mcp_and_needs_permission():
+def test_brief_endpoint_runs_the_agent_over_real_mcp_and_needs_permission():
     c = TestClient(app)
-    assert c.post("/api/v1/assets/EA-000003/review").status_code == 401
-    assert c.post("/api/v1/assets/EA-000003/review", headers=AUDITOR).status_code == 403     # auditors read, not run
-    r = c.post("/api/v1/assets/EA-000003/review", headers=CISO)
+    assert c.post("/api/v1/assets/EA-000003/brief").status_code == 401
+    assert c.post("/api/v1/assets/EA-000003/brief", headers=AUDITOR).status_code == 403     # auditors read, not run
+    r = c.post("/api/v1/assets/EA-000003/brief", headers=CISO)
     assert r.status_code == 200
+    assert c.post("/api/v1/assets/EA-000003/review", headers=CISO).status_code == 404        # the old word is gone (D-028)
     body = r.json()
     assert body["status"] == "succeeded" and body["output"]["data_quality_flags"] == ["no_owner"]
     assert body["output"]["supporting_facts"]["hostname"] == "hr-portal-web01"

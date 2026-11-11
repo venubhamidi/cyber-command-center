@@ -77,7 +77,7 @@ export const api = {
   assets: (params: Record<string, string> = {}) =>
     request<Page<Asset>>(`/api/v1/assets?${new URLSearchParams(params)}`),
   assetSummary: () => request<AssetSummary>("/api/v1/assets/summary"),
-  review: (assetId: string) =>
-    request<AgentResponse>(`/api/v1/assets/${encodeURIComponent(assetId)}/review`, "POST"),
+  brief: (assetId: string) =>
+    request<AgentResponse>(`/api/v1/assets/${encodeURIComponent(assetId)}/brief`, "POST"),
   health: () => fetch("/api/v1/platform/health").then((r) => r.json() as Promise<Health>),
 };

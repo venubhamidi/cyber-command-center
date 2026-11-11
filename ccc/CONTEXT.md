@@ -31,8 +31,7 @@ Not: asset category (the PRD's three groups IT, Cloud, OT), which the code does 
 The Asset Summary Agent's advisory answer about one asset, in the PRD Module 7 format: executive
 summary, supporting facts, business impact, recommended action, source references, last-updated
 time, data completeness. Facts, sources, time and completeness are filled by code; the model
-writes only the summary, impact and action. The endpoint, the dashboard button and one test
-still say "review"; they are renamed to brief (D-028).
+writes only the summary, impact and action. Endpoint: `POST /api/v1/assets/{enterprise asset ID}/brief`.
 Example: a brief on `EA-000003` says the asset has no owner and recommends naming one.
 Not: a risk record, a chat answer about many assets.
 

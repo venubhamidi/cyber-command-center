@@ -16,11 +16,11 @@ export default function App() {
   const [summary, setSummary] = useState<AssetSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [criticality, setCriticality] = useState<string>("");
-  const [review, setReview] = useState<{ id: string; result?: AgentResponse; error?: string } | null>(null);
+  const [brief, setBrief] = useState<{ id: string; result?: AgentResponse; error?: string } | null>(null);
 
-  function runReview(id: string) {
-    setReview({ id });
-    api.review(id).then((result) => setReview({ id, result })).catch((e: Error) => setReview({ id, error: e.message }));
+  function runBrief(id: string) {
+    setBrief({ id });
+    api.brief(id).then((result) => setBrief({ id, result })).catch((e: Error) => setBrief({ id, error: e.message }));
   }
 
   useEffect(() => {
@@ -99,28 +99,28 @@ export default function App() {
               <td><span className={`pill state-${a.lifecycle_state}`}>{a.lifecycle_state.replace("_", " ")}</span></td>
               <td>{freshness(a.last_seen_at)}</td>
               <td className="mono small">{a.sources.join(", ")}</td>
-              <td><button onClick={() => runReview(a.enterprise_asset_id)}>Brief</button></td>
+              <td><button onClick={() => runBrief(a.enterprise_asset_id)}>Brief</button></td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      {review && (
-        <section className="review" aria-live="polite">
-          <h2>Assistant brief on {review.id} <span className="advisory">advisory</span></h2>
-          {!review.result && !review.error && <p className="sub">Running…</p>}
-          {review.error && <div className="error">Brief failed: {review.error}</div>}
-          {review.result?.status === "failed" && <div className="error">Agent failed: {review.result.error}</div>}
-          {review.result?.status === "succeeded" && (
+      {brief && (
+        <section className="brief" aria-live="polite">
+          <h2>Assistant brief on {brief.id} <span className="advisory">advisory</span></h2>
+          {!brief.result && !brief.error && <p className="sub">Running…</p>}
+          {brief.error && <div className="error">Brief failed: {brief.error}</div>}
+          {brief.result?.status === "failed" && <div className="error">Agent failed: {brief.result.error}</div>}
+          {brief.result?.status === "succeeded" && (
             <>
-              <p>{review.result.output.executive_summary}</p>
-              <p><strong>Business impact:</strong> {review.result.output.business_impact}</p>
-              <p><strong>Recommended action:</strong> {review.result.output.recommended_action}</p>
+              <p>{brief.result.output.executive_summary}</p>
+              <p><strong>Business impact:</strong> {brief.result.output.business_impact}</p>
+              <p><strong>Recommended action:</strong> {brief.result.output.recommended_action}</p>
               <p className="small">
-                Gaps (computed by rules): {review.result.output.data_quality_flags?.join(", ") || "none"} · missing fields:{" "}
-                {review.result.output.data_completeness?.missing_fields.join(", ") || "none"} · sources:{" "}
-                {review.result.output.source_references?.join(", ")} · last updated {review.result.output.last_updated}
-                {review.result.guardrail_events.length > 0 && ` · guardrails: ${review.result.guardrail_events.join(", ")}`}
+                Gaps (computed by rules): {brief.result.output.data_quality_flags?.join(", ") || "none"} · missing fields:{" "}
+                {brief.result.output.data_completeness?.missing_fields.join(", ") || "none"} · sources:{" "}
+                {brief.result.output.source_references?.join(", ")} · last updated {brief.result.output.last_updated}
+                {brief.result.guardrail_events.length > 0 && ` · guardrails: ${brief.result.guardrail_events.join(", ")}`}
               </p>
             </>
           )}
