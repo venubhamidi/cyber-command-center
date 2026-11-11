@@ -12,6 +12,7 @@ class Settings(HarnessSettings):
     # Development tokens. Ignored with single sign-on; refused when APP_ENVIRONMENT=prod.
     api_tokens: dict[str, tuple[str, str]] = {
         "dev-ciso-token": ("ciso@example.com", "ciso"),
+        "dev-cio-token": ("cio@example.com", "cio"),
         "dev-auditor-token": ("audit@example.com", "internal_audit"),
         "dev-admin-token": ("admin@example.com", "platform_admin"),
         "dev-bizowner-token": ("owner@example.com", "business_owner"),

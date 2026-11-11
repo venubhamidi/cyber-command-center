@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ccc.agents.asset_agent import summarize_asset
@@ -7,13 +9,18 @@ from ccc.api.schemas import (
     Asset,
     AssetDetail,
     AssetSummary,
+    Dashboard,
     DataCompleteness,
     HistoryEntry,
+    Kpi,
     Me,
     SourceSystemRecord,
+    TopRisk,
     UsageRow,
 )
 from ccc.assets import asset_flags, gap_counts, missing_required_fields
+from ccc.dashboard import KPIS, compute_kpis
+from ccc.snapshot import previous_values, trend
 from harness.agents.contract import AgentResponse
 from harness.app import db_url
 from harness.db import get_conn
@@ -27,6 +34,36 @@ router = APIRouter(prefix="/api/v1")
 def me(p: Principal = Depends(get_principal)) -> Me:
     """Who is calling and what they may do, so the screen shows only the actions this persona has."""
     return Me(subject=p.subject, roles=sorted(p.roles), permissions=sorted(p.permissions))
+
+
+TOP_RISKS_SQL = """
+SELECT r.title, r.business_unit, r.business_service, r.rating::text, r.business_impact, r.owner,
+       r.recommended_action, r.updated_at AS last_updated, r.source_system, r.model_version,
+       COALESCE(array_agg(a.enterprise_asset_id ORDER BY a.enterprise_asset_id) FILTER (WHERE a.id IS NOT NULL), '{}') AS affected_assets
+FROM risks r LEFT JOIN risk_assets ra ON ra.risk_id = r.id LEFT JOIN assets a ON a.id = ra.asset_id
+WHERE r.data_quality_status = 'ok'
+GROUP BY r.id ORDER BY r.rating, r.updated_at DESC LIMIT 5
+"""
+
+
+@router.get("/dashboard", response_model=Dashboard)
+def dashboard(_: Principal = Depends(require("dashboard:read")), db: str = Depends(db_url)) -> Dashboard:
+    """PRD Module 1: eight KPIs and the top five risks. Every number is computed here, never in the browser."""
+    now = datetime.now(UTC)
+    with get_conn(db) as conn:
+        kpis = compute_kpis(conn, now=now)
+        previous = previous_values(conn, now.date())
+        risks = conn.execute(TOP_RISKS_SQL).fetchall()
+    tiles = []
+    for name, (unit, good, drilldown) in KPIS.items():
+        k, prev = kpis[name], previous.get(name)
+        tiles.append(Kpi(kpi=name, value=k.value, unit=unit, previous_value=prev[0] if prev else None,
+                         previous_period=prev[1] if prev else None, trend=trend(k.value, prev[0] if prev else None),
+                         good_direction=good, data_as_of=k.data_as_of, source_systems=k.source_systems,
+                         drilldown=drilldown, formula_version=k.formula_version,
+                         mock=any(s.startswith("mock_") for s in k.source_systems)))
+    return Dashboard(generated_at=now, kpis=tiles, top_risks=[TopRisk(**r) for r in risks])
+
 
 ASSET_SELECT = """
 SELECT a.id, a.enterprise_asset_id, a.hostname, host(a.ip_address) AS ip_address,

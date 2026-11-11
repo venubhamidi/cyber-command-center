@@ -48,7 +48,7 @@ _COLUMNS = {
     "control_assessments": ("framework", "control_id", "title", "status", "effectiveness", "assessor", "assessed_at"),
     "incidents": ("title", "severity", "status", "opened_at", "closed_at"),
     "risks": ("title", "business_unit", "business_service", "rating", "business_impact", "owner",
-              "recommended_action", "model_version"),
+              "recommended_action", "model_version", "updated_at"),      # the risk's own last-updated time (PRD Module 1)
 }
 _KEY = {"patch_status": ("asset_id", "source_system")}      # one row per asset per source
 
@@ -58,9 +58,11 @@ def _upsert(conn, kind: str, row: dict[str, Any]) -> bool:
     cols = (*_COLUMNS[kind], "source_system", "source_record_id", "collected_at")
     key = _KEY.get(kind, ("source_system", "source_record_id"))
     sets = ", ".join(f"{c} = EXCLUDED.{c}" for c in cols if c not in key)
+    if "updated_at" not in cols:
+        sets += ", updated_at = now()"
     r = conn.execute(
         f"INSERT INTO {kind} ({', '.join(cols)}) VALUES ({', '.join('%(' + c + ')s' for c in cols)}) "
-        f"ON CONFLICT ({', '.join(key)}) DO UPDATE SET {sets}, updated_at = now(), data_quality_status = 'ok' "
+        f"ON CONFLICT ({', '.join(key)}) DO UPDATE SET {sets}, data_quality_status = 'ok' "
         "RETURNING (xmax = 0) AS inserted",
         {c: row.get(c) for c in cols},
     ).fetchone()

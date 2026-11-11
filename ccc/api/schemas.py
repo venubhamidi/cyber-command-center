@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -87,3 +87,42 @@ class UsageRow(BaseModel):
     output_tokens: int
     total_tokens: int
     cost_usd: float | None
+
+
+class Kpi(BaseModel):
+    """One dashboard tile (PRD Module 1): value, previous period, trend, freshness, sources, drill-down."""
+
+    kpi: str
+    value: float | None               # None = unknown: the sources have not reported
+    unit: str                         # count | percent | score
+    previous_value: float | None
+    previous_period: date | None
+    trend: str                        # up | down | flat | no_history
+    good_direction: str               # which way is an improvement, for the tile's colour
+    data_as_of: datetime | None
+    source_systems: list[str]
+    drilldown: str
+    formula_version: str
+    mock: bool                        # True when any source is a mock connector; the tile says so
+
+
+class TopRisk(BaseModel):
+    """One of the top five enterprise risks with the nine fields PRD Module 1 requires."""
+
+    title: str
+    business_unit: str | None
+    business_service: str | None
+    affected_assets: list[str]
+    rating: str
+    business_impact: str
+    owner: str | None
+    recommended_action: str
+    last_updated: datetime
+    source_system: str
+    model_version: str
+
+
+class Dashboard(BaseModel):
+    generated_at: datetime
+    kpis: list[Kpi]
+    top_risks: list[TopRisk]

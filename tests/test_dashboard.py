@@ -2,11 +2,13 @@
 from datetime import UTC, date, datetime
 
 import pytest
+from fastapi.testclient import TestClient
 
 from ccc.config import MIGRATIONS_DIR, settings
 from ccc.dashboard import compute_kpis
 from ccc.ingest import ingest_csv
 from ccc.ingest_sources import ingest_feed, ingest_sources
+from ccc.main import app
 from ccc.plugins.mock_connectors import Feed
 from ccc.snapshot import previous_values, trend, write_snapshots
 from harness.db import apply_migrations, get_conn
@@ -177,3 +179,58 @@ def test_no_snapshot_means_no_history_not_zero(sample_csv):
         assert previous_values(conn, date(2026, 11, 10)) == {}
         assert write_snapshots(conn, date(2026, 11, 10), now=NOW) == 1           # only critical_assets has a value
     assert trend(3.0, None) == "no_history"
+
+
+# --- Ticket 05: the dashboard endpoint -----------------------------------------------------------
+
+CISO = {"Authorization": "Bearer dev-ciso-token"}
+CIO = {"Authorization": "Bearer dev-cio-token"}
+AUDITOR = {"Authorization": "Bearer dev-auditor-token"}
+BIZ = {"Authorization": "Bearer dev-bizowner-token"}
+
+
+@pytest.fixture
+def client(seeded):
+    return TestClient(app)
+
+
+def test_dashboard_needs_dashboard_read(client):
+    assert client.get("/api/v1/dashboard").status_code == 401
+    assert client.get("/api/v1/dashboard", headers=AUDITOR).status_code == 403
+    assert client.get("/api/v1/dashboard", headers=BIZ).status_code == 403
+    assert client.get("/api/v1/dashboard", headers=CIO).status_code == 200
+    assert client.get("/api/v1/dashboard", headers=CISO).status_code == 200
+
+
+def test_dashboard_carries_the_eight_tiles_with_previous_trend_freshness_sources_and_drilldown(client):
+    body = client.get("/api/v1/dashboard", headers=CISO).json()
+    tiles = {k["kpi"]: k for k in body["kpis"]}
+    assert list(tiles) == ["enterprise_risk_score", "security_posture", "patch_compliance", "vulnerability_exposure",
+                           "nist_compliance", "critical_assets", "open_incidents", "remediation_sla"]
+    patch = tiles["patch_compliance"]
+    assert patch["value"] == 33.3 and patch["unit"] == "percent" and patch["mock"] is True
+    assert (patch["previous_value"], patch["previous_period"], patch["trend"]) == (33.3, "2026-11-09", "flat")
+    assert patch["source_systems"] == ["mock_sccm"] and patch["data_as_of"].startswith("2026-11-10T05:30")
+    assert patch["drilldown"] == "/?view=patch-status" and patch["good_direction"] == "up"
+    crit = tiles["critical_assets"]
+    assert crit["value"] == 3 and crit["mock"] is False and crit["drilldown"] == "/?view=assets&criticality=critical"
+    assert tiles["vulnerability_exposure"]["trend"] == "down"           # 7 today, 9 in the mock history
+    assert tiles["enterprise_risk_score"]["formula_version"] == "v0"
+
+
+def test_top_five_risks_are_ordered_by_rating_then_recency_with_the_prd_fields(client):
+    risks = client.get("/api/v1/dashboard", headers=CISO).json()["top_risks"]
+    assert [r["title"] for r in risks] == [
+        "Critical ERP database exposure",                        # critical, updated 11-10
+        "Manufacturing line controller without patch coverage",  # critical, updated 11-09
+        "HR portal exposed to known exploited vulnerability",    # high, 11-10
+        "ERP application server missing security patches",       # high, 11-08
+        "Flaw remediation control not implemented",              # medium; the sixth (low) is cut
+    ]
+    first = risks[0]
+    assert first["business_unit"] == "Finance" and first["business_service"] == "ERP"
+    assert first["affected_assets"] == ["EA-000001"] and first["rating"] == "critical"
+    assert first["owner"] == "j.alvarez" and first["recommended_action"].startswith("Patch")
+    assert first["business_impact"] and first["last_updated"].startswith("2026-11-10") and first["model_version"] == "mock-v0"
+    assert risks[2]["owner"] is None                                         # an unowned risk stays unowned
+    assert risks[4]["affected_assets"] == ["EA-000001", "EA-000002", "EA-000003"]
