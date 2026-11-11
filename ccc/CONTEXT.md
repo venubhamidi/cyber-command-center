@@ -17,7 +17,7 @@ Not: a finding, a source record, an application.
 The accountable party recorded on an asset: a person or a team (D-027). Stored as text in
 `asset_owner`; an owner type will be recorded once real data shows the mix. An asset with no
 owner is a gap, never an asset that belongs to nobody by design.
-Example: `j.alvarez` owns `EA-000001`; `EA-000003` has no owner and is flagged `no_owner`.
+Example: `j.alvarez` owns `EA-000001`; `EA-000003` has no owner and is flagged `without_owner`.
 Not: the control owner, the accountable owner of a risk, a business owner (persona).
 
 ## asset type
@@ -73,7 +73,7 @@ How much the business depends on an asset: `critical`, `high`, `medium`, `low` o
 (`asset_criticality` enum). A blank value is stored as `unknown`, never as `low`. The PRD's
 "asset criticality" and "business criticality" are this same field (D-030). Who may set it is
 still D-009.
-Example: `EA-000006` has criticality `unknown` and is flagged `no_criticality`.
+Example: `EA-000006` has criticality `unknown` and is flagged `without_criticality`.
 Not: vulnerability severity, risk rating.
 
 ## data completeness
