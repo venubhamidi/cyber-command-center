@@ -101,7 +101,8 @@ Not: the database row id, a hostname, a source record id, the PRD's illustrative
 ## finding
 A record from a source system that says something is wrong with an asset, kept with its source,
 source record id, collection and update times, data-quality status, correlation status and
-provenance (PRD §7). Source facts are never overwritten by model output. Not yet in the code.
+provenance (PRD §7). Source facts are never overwritten by model output. Table `findings` holds the
+vulnerability kind (dashboard ticket 01); control and risk findings are not yet in the code.
 The PRD uses the word for vulnerability findings, control-assessment findings and the findings
 behind a risk; whether one term covers all three waits for the risk model (D-033).
 Example: Tenable record `TEN-10001`, a critical CVE on `PROD-SRV-001`.
@@ -155,3 +156,17 @@ An asset that a source system reports but the inventory does not hold (PRD Modul
 5, "identify unknown assets"). Not the lifecycle state `unknown`. Not yet detected by the code.
 Example: a server Tenable scans that has no enterprise asset ID.
 Not: an asset with lifecycle state `unknown`, a potentially inactive asset.
+
+## connector
+A plugin of kind `connector` that fetches records from one source system and returns them to
+deterministic ingestion code; it never writes to the database itself. Mock connectors read
+`ccc/mock/*.json` and carry a `source_system` name starting with `mock_`.
+Example: `mock_tenable` returns the seed findings; a real Tenable connector replaces it by setting.
+Not: the ingestion code, a source system, an MCP tool.
+
+## snapshot
+One KPI's value recorded for one day with the formula version and source systems that produced it
+(`kpi_snapshots`). The previous-period value and the trend on a dashboard tile come from the
+latest earlier snapshot, never from recomputing old data with today's formula.
+Example: `patch_compliance`, 2026-11-09, 66.7, `v0`.
+Not: the live value, an audit row.

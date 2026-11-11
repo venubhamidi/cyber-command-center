@@ -16,7 +16,8 @@ def schema():
 @pytest.fixture(autouse=True)
 def clean_tables(schema):
     with get_conn(settings.database_url) as conn:
-        conn.execute("TRUNCATE asset_history, asset_sources, assets, audit_log, model_usage, agent_executions, "
+        conn.execute("TRUNCATE kpi_snapshots, risk_assets, risks, incidents, control_assessments, patch_status, findings, "
+                     "asset_history, asset_sources, assets, audit_log, model_usage, agent_executions, "
                      "agent_definitions, eval_results, eval_runs RESTART IDENTITY CASCADE")
         conn.commit()
     yield
