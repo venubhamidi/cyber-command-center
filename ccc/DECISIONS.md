@@ -80,8 +80,13 @@ Not decisions, just work not done yet. Listed so nobody assumes it exists.
 - **Chat (Module 7):** no `/api/v1/chat`. The asset agent's answer does follow the seven-part response format.
 - **AI operations (Module 8):** `model_usage` has no use-case field; no success/failure/retry-rate views
   (the data is recorded in `agent_executions`). Agent evaluations exist for the one agent.
-- **Data (§7):** 4 of the PRD's 22 tables exist in some form, plus the audit table under a different name.
-- **Screens (§11):** asset inventory with an assistant brief per asset. No asset detail screen yet.
-- **Integrations:** no connector to Tenable, Defender, SCCM, Intune, Chronicle or Entra ID. Each will be a
-  plugin in `ccc/plugins/`.
+- **Data (§7):** 11 of the PRD's 22 tables exist in some form, plus the audit table under a different name.
+  Findings, patch status, control assessments, incidents and risks hold mock data only.
+- **Modules 3 to 6:** no screens or filters of their own; the dashboard's drill-down is a plain list.
+  Risks are seeded by a mock, not derived by a risk engine. Control-to-ISO/TISAX mappings and evidence
+  records do not exist.
+- **Screens (§11):** dashboard, drill-down list, asset inventory, asset detail. No chat, no AI operations screen.
+- **Integrations:** every connector is a mock (`ccc/plugins/mock_connectors.py`); no connector to Tenable,
+  Defender, SCCM, Intune, Chronicle or Entra ID. A real one is a plugin in `ccc/plugins/` chosen by `APP_CONNECTORS`.
+- **Scheduling:** `python -m ccc.snapshot` must be run daily by ops; nothing in the application schedules it.
 - **Observability:** no OpenTelemetry, metrics or tracing.

@@ -17,15 +17,17 @@ see the stack table in `ARCHITECTURE.md`. Folder `mcp_servers/` (ADR 0001); read
 ## Not decided yet — do not guess
 - Agent framework (LangGraph, Google ADK or none): D-001. Import neither; use the harness contract.
 - Approved model, and whether asset facts may go to a hosted model: D-014. Mock provider only.
-- Risk-score and compliance weights: D-007, D-008. Do not invent formulas.
+- Risk-score and compliance weights: D-007, D-008. Provisional v0 lives in `ccc/dashboard.py` (D-039),
+  version-stamped on every snapshot; change weights only with a version bump and a decision row.
 - Asset correlation keys: D-010. Match on `enterprise_asset_id` only.
 - Wording conflicts D-027 to D-037: use the glossary's current definition; rename nothing until decided.
 
 ## Domain rules (each names its test)
 1. **Never auto-delete an asset.** Missing from a source ⇒ `lifecycle_state='potentially_inactive'`
    plus a history row. (`test_asset_missing_from_source_is_marked_not_deleted`)
-2. **Store blank criticality as `'unknown'`**, never as a default like `low`. The same will apply to
-   patch status: unknown is never compliant. (`test_blank_criticality_becomes_unknown_not_low`)
+2. **Store blank criticality as `'unknown'`**, never as a default like `low`. The same holds for
+   patch status: unknown is never compliant, and a KPI whose source reported nothing is `null`.
+   (`test_blank_criticality_becomes_unknown_not_low`, `test_unknown_patch_status_is_never_compliant`)
 3. **Take asset KPIs from `/api/v1/assets/summary`**, computed by the rules in `ccc/assets.py`; the
    agent uses the same rules. (`test_summary_counts_whole_inventory_not_one_page`,
    `test_flags_are_computed_by_rules_and_match_the_api`)
@@ -44,6 +46,9 @@ see the stack table in `ARCHITECTURE.md`. Folder `mcp_servers/` (ADR 0001); read
 ## Traps
 - The folder is `mcp_servers/`, never `mcp/`: that name shadows the MCP SDK (ADR 0001).
 - Keep source facts and model output apart (PRD §7): `supporting_facts` is the record as stored.
-- Source-system connectors (Tenable, Defender, SCCM, Intune, Chronicle, Entra ID) are plugins in
-  `ccc/plugins/` chosen by a setting; none exists yet. `ccc/sample_assets.csv` holds six invented
-  assets, and the tests and evals assume exactly those.
+- Source-system connectors are plugins of kind `connector` in `ccc/plugins/` chosen by
+  `APP_CONNECTORS`; only mocks exist, reading `ccc/mock/*.json`. `ccc/sample_assets.csv` holds six
+  invented assets, and the tests, evals and the hand-counted dashboard values assume exactly those
+  files: change a seed and recount `tests/test_dashboard.py`.
+- Every KPI is computed in `ccc/dashboard.py` with `now` as a parameter; never read a KPI from a
+  snapshot as the live value, and never compute one in the browser.

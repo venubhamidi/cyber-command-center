@@ -6,15 +6,17 @@ specific to the Command Center is in `ccc/`, `frontend/` and `tests/`.
 
 ```
 CSV ──ingest──▶ PostgreSQL ──▶ FastAPI (login · roles · rate limit · audit) ──▶ React dashboard
-                    ▲
-                    └── asset-mcp (MCP) ◀── Asset Summary Agent ──▶ model gateway ──▶ usage records
+connectors ─┘       ▲          (KPI math and snapshots in code: ccc/dashboard.py, ccc/snapshot.py)
+(mock today)        └── asset-mcp (MCP) ◀── Asset Summary Agent ──▶ model gateway ──▶ usage records
 ```
 
-What exists today: asset inventory from a sample CSV; endpoints for inventory, summary, asset
-detail (by enterprise asset ID, with data-quality flags, completeness and source systems), asset
-history, an assistant brief, the caller's permissions and AI usage; one agent with 8 evaluation
-cases; 2 MCP tools; two screens (inventory with a gap chart, asset detail with history and brief);
-111 tests. Design: `ARCHITECTURE.md`. What does not: see "Known gaps" in
+What exists today: asset inventory from a sample CSV (real data path); findings, patch status,
+control assessments, incidents and risks loaded from mock connectors in `ccc/mock/`; the executive
+dashboard (PRD Module 1: eight KPIs with previous period, trend, freshness, sources and drill-down,
+plus the top five risks); endpoints for the dashboard, the five drill-down lists, inventory, summary,
+asset detail, asset history, an assistant brief, the caller's permissions and AI usage; one agent
+with 8 evaluation cases; 2 MCP tools; four screens (dashboard, drill-down list, inventory, asset
+detail); 131 tests. Design: `ARCHITECTURE.md`. What does not: see "Known gaps" in
 `ccc/DECISIONS.md`, which also lists the decisions needed before more is built.
 
 ## Run it locally
@@ -24,16 +26,20 @@ sudo -u postgres scripts/dev_db.sh        # creates databases app and app_test
 pip install -r requirements-dev.txt
 python -m harness.migrate ccc
 python -m ccc.ingest                      # loads ccc/sample_assets.csv
+python -m ccc.ingest_sources              # loads the mock findings, patch, controls, incidents, risks
+python -m ccc.snapshot                    # records today's KPIs (run daily; gives tomorrow its trend)
 uvicorn ccc.main:app --reload             # API on http://localhost:8000/docs
 cd frontend && npm install && npm run dev # dashboard on http://localhost:5173
 ```
-Development tokens: `dev-ciso-token`, `dev-auditor-token`, `dev-admin-token`, `dev-bizowner-token`.
+Development tokens: `dev-ciso-token`, `dev-cio-token`, `dev-auditor-token`, `dev-admin-token`, `dev-bizowner-token`.
 
 ## Run it in containers
 ```bash
 cp deploy/.env.example deploy/.env
 docker compose -f deploy/docker-compose.yml up --build    # then open http://localhost:8080
 docker compose -f deploy/docker-compose.yml exec api python -m ccc.ingest
+docker compose -f deploy/docker-compose.yml exec api python -m ccc.ingest_sources
+docker compose -f deploy/docker-compose.yml exec api python -m ccc.snapshot
 ```
 
 ## Check it
