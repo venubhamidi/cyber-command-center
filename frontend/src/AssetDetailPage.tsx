@@ -12,7 +12,7 @@ import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
-import { api, type AssetDetail } from "./api";
+import { api, type AssetDetail, type HistoryEntry } from "./api";
 
 const PROFILE: { key: keyof AssetDetail; label: string }[] = [
   { key: "hostname", label: "Name" }, { key: "enterprise_asset_id", label: "Enterprise asset ID" },
@@ -31,6 +31,50 @@ function Value({ value }: { value: unknown }) {
   if (value === null || value === undefined || value === "") return <span className="missing">missing</span>;
   if (value === "unknown") return <span className="missing">unknown</span>;
   return <>{String(value).replace("_", " ")}</>;
+}
+
+const HISTORY_PAGE = 50;
+
+function History({ id }: { id: string }) {
+  const [entries, setEntries] = useState<HistoryEntry[]>([]);
+  const [total, setTotal] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function load(offset: number) {
+    api.assetHistory(id, { limit: String(HISTORY_PAGE), offset: String(offset) })
+      .then((page) => { setTotal(page.total); setEntries((prev) => (offset === 0 ? page.items : [...prev, ...page.items])); })
+      .catch((e: Error) => setError(e.message));
+  }
+  useEffect(() => { load(0); }, [id]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <Paper variant="outlined" sx={{ p: 2 }}>
+      <Typography variant="subtitle2" color="text.secondary" gutterBottom>History{total !== null && ` · ${total} change${total === 1 ? "" : "s"}`}</Typography>
+      {error && <div className="error">Could not load history: {error}</div>}
+      {total === 0 && <Typography variant="body2">No changes recorded.</Typography>}
+      {entries.length > 0 && (
+        <Table size="small">
+          <TableHead>
+            <TableRow><TableCell>When</TableCell><TableCell>By</TableCell><TableCell>Field</TableCell><TableCell>From</TableCell><TableCell>To</TableCell></TableRow>
+          </TableHead>
+          <TableBody>
+            {entries.map((h, i) => (
+              <TableRow key={i}>
+                <TableCell>{when(h.changed_at)}</TableCell>
+                <TableCell className="mono">{h.changed_by}</TableCell>
+                <TableCell>{h.field.replaceAll("_", " ")}</TableCell>
+                <TableCell><Value value={h.old_value} /></TableCell>
+                <TableCell><Value value={h.new_value} /></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+      {total !== null && entries.length < total && (
+        <Button size="small" sx={{ mt: 1 }} onClick={() => load(entries.length)}>Load more ({total - entries.length} older)</Button>
+      )}
+    </Paper>
+  );
 }
 
 export function AssetDetailPage({ id, onBack }: { id: string; onBack: () => void }) {
@@ -98,6 +142,8 @@ export function AssetDetailPage({ id, onBack }: { id: string; onBack: () => void
               </TableBody>
             </Table>
           </Paper>
+
+          <History id={id} />
         </>
       )}
     </Stack>
