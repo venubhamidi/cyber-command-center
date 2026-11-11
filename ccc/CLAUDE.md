@@ -7,7 +7,12 @@ harness way; where the PRD's wording pulls against a harness rule, the harness w
 difference is a `DECISIONS.md` row or an ADR. The root `CLAUDE.md` applies here as well; this
 file adds only what is specific to the Command Center.
 Terms, glossary: `ccc/CONTEXT.md`. Open questions: `ccc/DECISIONS.md` ("Decide first" comes first).
-Decision records: `docs/adr/`.
+Decision records: `docs/adr/`. Design, data flow, guardrails, test seams: `ARCHITECTURE.md`;
+read it before a feature and extend it after one.
+
+## Key decisions already made
+No agent framework (D-001), on-premises PostgreSQL (PRD §6), no queue or cache, no retrieval:
+see the stack table in `ARCHITECTURE.md`. Folder `mcp_servers/` (ADR 0001); read-only MVP (ADR 0005).
 
 ## Not decided yet — do not guess
 - Agent framework (LangGraph, Google ADK or none): D-001. Import neither; use the harness contract.
