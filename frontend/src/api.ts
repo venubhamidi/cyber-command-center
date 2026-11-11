@@ -12,7 +12,7 @@ export interface Asset {
   environment: string;
   lifecycle_state: "active" | "potentially_inactive" | "retired" | "unknown";
   last_seen_at: string;
-  sources: string[];
+  source_systems: string[];
 }
 
 export interface Page<T> {

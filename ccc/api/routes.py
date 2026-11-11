@@ -18,7 +18,7 @@ SELECT a.id, a.enterprise_asset_id, a.hostname, host(a.ip_address) AS ip_address
        a.mac_address::text AS mac_address, a.asset_type::text, a.asset_owner, a.business_unit,
        a.business_service, a.criticality::text, a.location, a.environment::text, a.operating_system,
        a.lifecycle_state::text, a.last_seen_at,
-       COALESCE(array_agg(s.source_system ORDER BY s.source_system) FILTER (WHERE s.source_system IS NOT NULL), '{}') AS sources
+       COALESCE(array_agg(s.source_system ORDER BY s.source_system) FILTER (WHERE s.source_system IS NOT NULL), '{}') AS source_systems
 FROM assets a LEFT JOIN asset_sources s ON s.asset_id = a.id
 """
 

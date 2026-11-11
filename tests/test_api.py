@@ -50,9 +50,9 @@ def test_validation_rejects_bad_limit(client):
     assert client.get("/api/v1/assets?limit=9999", headers=CISO).status_code == 422
 
 
-def test_asset_carries_freshness_and_sources(client):
+def test_asset_carries_freshness_and_source_systems(client):
     a = client.get("/api/v1/assets/1", headers=CISO).json()
-    assert a["last_seen_at"] and a["sources"] == ["asset_db_csv"]
+    assert a["last_seen_at"] and a["source_systems"] == ["asset_db_csv"]
 
 
 def test_unknown_asset_is_404(client):

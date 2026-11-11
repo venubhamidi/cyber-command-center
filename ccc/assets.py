@@ -19,9 +19,9 @@ def asset_flags(asset: dict[str, Any]) -> list[str]:
     """Data-quality flags for one asset. The same rules as the SQL predicates above."""
     flags = []
     if not asset.get("asset_owner"):
-        flags.append("no_owner")
+        flags.append("without_owner")
     if asset.get("criticality") == "unknown":
-        flags.append("no_criticality")
+        flags.append("without_criticality")
     if asset.get("lifecycle_state") == "potentially_inactive":
         flags.append("potentially_inactive")
     return flags

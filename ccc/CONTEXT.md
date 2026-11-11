@@ -87,8 +87,7 @@ Not: data freshness (when a source last reported), a data-quality flag.
 ## data-quality flag
 A gap on an asset computed by the rules in code and shared by the API summary, the MCP gap tool
 and the agent: `without_owner`, `without_criticality`, `potentially_inactive`. The summary
-endpoint counts the same gaps under the same names. The flags still read `no_owner` and
-`no_criticality` in code until the rename ticket lands (D-032).
+endpoint counts the same gaps under the same names.
 Example: `EA-000003` carries `without_owner`; the summary counts it under `without_owner`.
 Not: a finding, data completeness, the PRD's per-finding "data quality status".
 
@@ -147,7 +146,7 @@ Not: a vulnerability, a finding, a data-quality flag.
 An outside system that reports assets or findings and whose name is kept on every record it
 contributed (`asset_sources.source_system`; PRD §7 "original source system"). Each is reached
 through a plugin. The PRD's "source platform", "integrated platform" and "data source" all mean
-this. The API field `sources` becomes `source_systems` in the rename ticket (D-037).
+this. API field: `source_systems`.
 Example: `asset_db_csv` today; Tenable, Defender, SCCM, Intune, Chronicle and Entra ID later.
 Not: a model provider, the database.
 

@@ -56,12 +56,12 @@ control and risk modules being designed: D-029, D-033, D-036.
 | D-029 | Open | Glossary | *Control effectiveness* values. The PRD requires a separate effectiveness status but names no states. | Not implemented. | CISO / Internal Audit |
 | D-030 | Decided | Glossary | Are "asset criticality" and "business criticality" the same field as *criticality*? | Yes: one field, `criticality`, on the asset. Decided by the owner, 2026-11-10. | CISO |
 | D-031 | Decided | Glossary | Which fields count for *data completeness*? | The code's five (`REQUIRED_FIELDS` in `ccc/assets.py`: owner, business unit, business service, location, known criticality). Findings, control status and risk rating are added when those tables exist. Decided by the owner, 2026-11-10. | Data Engineer |
-| D-032 | Decided | Glossary | The same gap has two names (`no_*` flags, `without_*` counts). | `without_*` everywhere; the flags `no_owner` and `no_criticality` are renamed in one ticket (API, MCP tool, evals, dashboard). Decided by the owner, 2026-11-10. | Product Owner |
+| D-032 | Decided | Glossary | The same gap has two names (`no_*` flags, `without_*` counts). | `without_*` everywhere (asset detail ticket 02). Decided by the owner, 2026-11-10. | Product Owner |
 | D-033 | Open | Glossary | Does *finding* cover vulnerability findings, control-assessment findings and the findings behind a risk, or does each get its own term? | Not implemented. | Security Architect |
 | D-034 | Decided | Glossary | "Unknown asset" (PRD Module 2 req. 5) versus lifecycle state `unknown`. | **unregistered**: an asset a source reports that the inventory lacks. The lifecycle state keeps `unknown`. Unregistered assets are not yet detected. Decided by the owner, 2026-11-10. | Data Engineer |
 | D-035 | Decided | Glossary | *Persona* or *role* for a user group? | Persona for the group (documents, screens); role for its key in code (`ROLE_PERMISSIONS`, the OIDC role map). Nothing renamed. Decided by the owner, 2026-11-10. | Product Owner |
 | D-036 | Open | Glossary | *Risk rating* (asset field), *Enterprise Risk Score* (KPI) and *risk priority* (agent output): three words, how many things? | None implemented. | CISO |
-| D-037 | Decided | Glossary | One word for an outside system that reports assets or findings. | **source system**. The API field `sources` becomes `source_systems` in the same rename ticket as D-032. Decided by the owner, 2026-11-10. | Data Engineer |
+| D-037 | Decided | Glossary | One word for an outside system that reports assets or findings. | **source system**; API field `source_systems` (asset detail ticket 02). Decided by the owner, 2026-11-10. | Data Engineer |
 
 ## Known gaps against the PRD
 

@@ -34,14 +34,14 @@ def in_process(asset_id: str):
 def test_flags_are_computed_by_rules_and_match_the_api():
     resp = in_process("EA-000003")
     assert resp.status == "succeeded" and resp.confidence == "advisory"
-    assert resp.output["data_quality_flags"] == ["no_owner"]
+    assert resp.output["data_quality_flags"] == ["without_owner"]
     assert resp.output["data_completeness"] == {"complete": False, "missing_fields": ["asset_owner"]}
-    assert in_process("EA-000006").output["data_quality_flags"] == ["no_criticality"]
+    assert in_process("EA-000006").output["data_quality_flags"] == ["without_criticality"]
     summary = TestClient(app).get("/api/v1/assets/summary", headers=CISO).json()
     assert (summary["without_owner"], summary["without_criticality"]) == (1, 1)
 
 
-def test_response_carries_sources_timestamp_and_completeness():
+def test_brief_carries_source_systems_timestamp_and_completeness():
     """PRD Module 7 mandatory response format."""
     out = in_process("EA-000001").output
     assert set(out) == {"executive_summary", "supporting_facts", "business_impact", "recommended_action",
@@ -97,7 +97,7 @@ def test_brief_endpoint_runs_the_agent_over_real_mcp_and_needs_permission():
     assert r.status_code == 200
     assert c.post("/api/v1/assets/EA-000003/review", headers=CISO).status_code == 404        # the old word is gone (D-028)
     body = r.json()
-    assert body["status"] == "succeeded" and body["output"]["data_quality_flags"] == ["no_owner"]
+    assert body["status"] == "succeeded" and body["output"]["data_quality_flags"] == ["without_owner"]
     assert body["output"]["supporting_facts"]["hostname"] == "hr-portal-web01"
     assert (body["tool_calls"], body["llm_calls"]) == (1, 1)
 

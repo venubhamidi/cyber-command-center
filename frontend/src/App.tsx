@@ -98,7 +98,7 @@ export default function App() {
               <td>{a.environment}</td>
               <td><span className={`pill state-${a.lifecycle_state}`}>{a.lifecycle_state.replace("_", " ")}</span></td>
               <td>{freshness(a.last_seen_at)}</td>
-              <td className="mono small">{a.sources.join(", ")}</td>
+              <td className="mono small">{a.source_systems.join(", ")}</td>
               <td><button onClick={() => runBrief(a.enterprise_asset_id)}>Brief</button></td>
             </tr>
           ))}

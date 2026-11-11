@@ -22,7 +22,7 @@ class Asset(BaseModel):
     lifecycle_state: str
     last_seen_at: datetime
     # PRD Module 1: every KPI/record carries freshness and source systems
-    sources: list[str] = Field(default_factory=list)
+    source_systems: list[str] = Field(default_factory=list)
 
 
 class AssetSummary(BaseModel):

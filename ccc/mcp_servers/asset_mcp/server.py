@@ -27,7 +27,7 @@ def _get_asset(enterprise_asset_id: str) -> dict[str, Any] | None:
                       a.asset_owner, a.business_unit, a.business_service, a.criticality::text, a.location,
                       a.environment::text, a.operating_system, a.lifecycle_state::text, a.last_seen_at::text,
                       COALESCE(array_agg(s.source_system ORDER BY s.source_system)
-                               FILTER (WHERE s.source_system IS NOT NULL), '{}') AS sources
+                               FILTER (WHERE s.source_system IS NOT NULL), '{}') AS source_systems
                FROM assets a LEFT JOIN asset_sources s ON s.asset_id = a.id
                WHERE a.enterprise_asset_id = %s GROUP BY a.id""",
             (enterprise_asset_id,)).fetchone()

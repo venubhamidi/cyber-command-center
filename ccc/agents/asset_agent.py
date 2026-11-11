@@ -55,7 +55,7 @@ class AssetSummaryAgent(Agent):
             "supporting_facts": asset,
             "business_impact": brief.business_impact,
             "recommended_action": brief.recommended_action,
-            "source_references": asset.get("sources", []),
+            "source_references": asset.get("source_systems", []),
             "last_updated": asset.get("last_seen_at"),
             "data_completeness": {"complete": not missing, "missing_fields": missing},
             "data_quality_flags": flags,
