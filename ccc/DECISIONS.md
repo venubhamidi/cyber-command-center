@@ -7,56 +7,61 @@ owner's answer before the affected module is built. Nothing here is guessed in c
 
 These three block the most work and should be settled before any new module is started.
 
-1. **D-014 — May asset facts leave the premises?** Whether hostnames, IPs and owners may be sent
-   to a hosted model decides between a hosted and a local model for every agent and the chat
-   assistant. The PRD says the data platform stays on-premises and hosted inference needs
-   classification, privacy, contractual and security review first.
-2. **Real data.** Everything so far runs on six invented assets. An export of the real asset
-   database (anonymized if needed) is the next input the project needs; it also answers D-010.
+1. **D-014 — May asset facts leave the premises?** Decided 2026-11-10: a hosted model, with host
+   names, owners and business units redacted as well, until the PRD §6 reviews are done. Next:
+   add the three patterns to `redact_patterns` and choose the model id (D-006 follows).
+2. **Real data.** Decided 2026-11-10: an anonymised export of the real asset database (same
+   columns, scrambled names and addresses) is the next input; it also answers D-010 and D-005.
+   Waiting on: a named provider and a date (not known on 2026-11-10; the PRD's Data Engineer role
+   is the likely owner).
 3. **D-010 / D-019 — Asset correlation keys.** Which identifiers match one asset across sources,
-   in what order of trust.
+   in what order of trust. Waiting on the real data export (item 2); then the Data Engineer.
+
+Interview of 2026-11-10 (`/grill`, two rounds): 22 rows decided, recorded in the log below. Still
+Open and waiting on the real data export: D-005, D-007, D-008, D-009, D-010, D-019. Waiting on the
+control and risk modules being designed: D-029, D-033, D-036.
 
 ## Log
 
 | ID | Status | Raised by | Question / finding | Current choice in code | Owner |
 |----|--------|-----------|--------------------|------------------------|-------|
-| D-001 | Open | PRD §5 | Agent orchestration: LangGraph, Google ADK, or **no framework** (the harness agent contract alone). The PRD asks for a proof of concept and warns against letting a framework dictate the architecture. | Neither imported. The proof of concept should compare all three on the same agent and evaluation set. | Principal AI Architect |
+| D-001 | Decided | PRD §5 | Agent orchestration: LangGraph, Google ADK, or no framework. | No framework; agents use the harness contract. The PoC comparing LangGraph, Google ADK and none runs only when an agent needs branching, cycles or resumable state; that need is the trigger. Decided by the owner, 2026-11-10. | Principal AI Architect |
 | D-002 | Decided | Build | PRD Part 6 names the folder `mcp/`. In Python this shadows the `mcp` SDK package and breaks every import. | Folder is `mcp_servers/` ([ADR 0001](../docs/adr/0001-mcp-servers-folder-name.md)). | — |
-| D-003 | Open | PRD §2, §12 | Identity provider. PRD requires enterprise SSO / OIDC with RBAC + ABAC but names no IdP. | The harness validates OIDC tokens (`APP_AUTH_PROVIDER=oidc`) and refuses development tokens in production. Still needed from you: which IdP, its issuer and audience, and which IdP groups map to which role. The browser login redirect is not built. | Security Architect |
-| D-004 | Open | PRD §8 | Should `/platform/health` be unauthenticated (liveness probe) or require auth? | Public, returns no secrets. | Security Architect |
+| D-003 | Decided | PRD §2, §12 | Identity provider. | Microsoft Entra ID over OIDC (`APP_AUTH_PROVIDER=oidc`), one IdP group per persona mapped in `APP_OIDC_ROLE_MAP`. Still needed: the tenant's issuer, audience and group names; the browser login redirect is its own ticket. Decided by the owner, 2026-11-10. | Security Architect |
+| D-004 | Decided | PRD §8 | Should `/platform/health` be unauthenticated? | Public; it is the liveness probe and returns no secrets (`test_health_is_public`). Decided by the owner, 2026-11-10. | Security Architect |
 | D-005 | Open | Build | PRD requires IP and MAC "where applicable" but says nothing about normalization. Uppercase MACs produced phantom history rows. | Normalized in ingestion; the policy on canonical forms for correlation still needs a decision. | Data Engineer |
-| D-006 | Open | Module 8 | Cost per token: which price list, who maintains it, how are local-model costs computed? | `cost_usd` is NULL unless a confirmed price table exists; mock = 0. | Platform Admin |
+| D-006 | Decided | Module 8 | Cost per token: which price list, who maintains it, how are local-model costs computed? | A price table setting per provider and model from the provider's published list price, maintained by the Platform Admin; local models at an agreed internal rate per token; `cost_usd` stays NULL for any model not in the table (mock = 0). Decided by the owner, 2026-11-10. Implementation is a ticket. | Platform Admin |
 | D-007 | Open | Module 1 | Enterprise Risk Score is a "weighted risk model" with no weights or formula. | Not implemented. | CISO |
 | D-008 | Open | Module 5 | NIST compliance is a "weighted applicable control assessment" with no weights defined. | Not implemented. | CISO / Internal Audit |
 | D-009 | Open | Module 2 | Criticality source of truth: who assigns it, and can a source system override a manual value? | Blank ⇒ `unknown`; surfaced as a KPI. | Business Owners |
 | D-010 | Open | Module 2 | Correlation keys for dedup across sources (hostname, MAC, serial, cloud resource ID?). PRD says "multiple identifiers" without ranking them. | Keys only on `enterprise_asset_id`. | Data Engineer |
-| D-011 | Open | PRD §5 | Event broker: "Kafka-compatible" but no product named. | None used; ingestion is synchronous. | Principal AI Architect |
-| D-012 | Open | Module 2 | When, and verified by whom, does `potentially_inactive` become `retired`? | Never auto-transitions. | Infrastructure Leadership |
+| D-011 | Decided | PRD §5 | Event broker. | None until the first connector that pushes events; ingestion stays synchronous. Revisit when such a connector is scheduled. Decided by the owner, 2026-11-10. | Principal AI Architect |
+| D-012 | Decided | Module 2 | When, and verified by whom, does `potentially_inactive` become `retired`? | Only a person with a new permission `assets:retire`, through an endpoint, in Phase 2 when the MVP stops being read-only (D-025). Never automatically. Decided by the owner, 2026-11-10. | Infrastructure Leadership |
 | D-013 | Decided | Build | MCP Python SDK is at 2.x; `FastMCP` is gone, replaced by `MCPServer`. | Pin `mcp>=2,<3`. | — |
-| D-014 | Open | PRD §6 | Which models are approved, and may asset facts be sent to a hosted model at all? | Mock provider only; no model id is configured. IP addresses, MAC addresses and e-mail addresses are replaced with placeholders before any model sees them ([ADR 0004](../docs/adr/0004-network-identifiers-and-emails-redacted-before-any-model.md)). Host names, owners and business-unit names are **not** redacted; decide whether they may be sent. No real model call has been made. | Security Architect / CISO |
+| D-014 | Decided | PRD §6 | Which models are approved, and may asset facts be sent to a hosted model at all? | A hosted model is allowed, with host names, owner names and business-unit names redacted in addition to IP, MAC and e-mail ([ADR 0004](../docs/adr/0004-network-identifiers-and-emails-redacted-before-any-model.md)), until the PRD §6 classification, privacy, contractual and security reviews are done. Decided by the owner, 2026-11-10. Which model id: still to be configured; no real model call has been made. | Security Architect / CISO |
 | D-015 | Decided | Build | Generic/domain split. | Two repositories: `agent-harness` (template with the read-only `harness/`) and this one, created from it ([ADR 0002](../docs/adr/0002-built-from-the-agent-harness-template.md)). | — |
 | D-016 | Decided | Build | Module-level settings made two apps in one process overwrite each other. | Per-app state on `app.state`. | — |
 | D-017 | Decided | Build | How applications take the harness. | Copied from the `agent-harness` template; `harness/` is read-only here and checksum-verified in CI; upgrades by `scripts/update_harness.sh`. Revisit a versioned package when two or three real applications exist ([ADR 0002](../docs/adr/0002-built-from-the-agent-harness-template.md)). | Principal AI Architect |
-| D-018 | Open | PRD §7, §12 | PRD names the table `audit_events` and requires **tamper-evident** audit records. | Table is `audit_log`. Records are hash-chained, so edits and deletions inside the log are detectable. Not yet covered: someone who can rewrite the whole table; that needs the latest hash shipped to a separate system. | Security Architect |
+| D-018 | Decided | PRD §7, §12 | PRD names the table `audit_events` and requires **tamper-evident** audit records. | Keep `audit_log` (a harness table), hash-chained. Phase 2 ticket: ship the latest chain hash to a separate store so a full rewrite is detectable. Decided by the owner, 2026-11-10. | Security Architect |
 | D-019 | Open | PRD §7 | PRD lists an `asset_identifiers` table ("external identifiers and correlations"). | `asset_sources` holds one source record id per source. Reshape once real data settles D-010. | Data Engineer |
-| D-020 | Open | PRD §5 | PRD proposes Material UI and Apache ECharts ("proposed, not mandatory"). | Hand-written CSS, no chart library. Decide before the dashboard grows. | UI/UX Designer |
-| D-021 | Open | Module 8 | "Never store sensitive prompts or outputs in cost telemetry by default." | `model_usage` holds no prompts. `agent_executions` stores full input and output; retention and redaction policy needed. | Security Architect |
-| D-022 | Open | PRD §9, §12 | Agents need dedicated workload identities; MCP access must be authenticated and authorized. | Tools are allow-listed per agent and every call is audited. The agent id is still only a label and the MCP stdio transport has no authentication. | Security Architect |
+| D-020 | Decided | PRD §5 | UI library and charts. | Material UI and Apache ECharts, adopted before the asset detail screen is built. Decided by the owner, 2026-11-10. | UI/UX Designer |
+| D-021 | Decided | Module 8 | "Never store sensitive prompts or outputs in cost telemetry by default." | `model_usage` holds no prompts. `agent_executions` input and output: kept 90 days, redacted with the same patterns as model input; both as settings. Decided by the owner, 2026-11-10. Implementation is a ticket (the redaction and retention settings do not exist yet). | Security Architect |
+| D-022 | Decided | PRD §9, §12 | Agents need dedicated workload identities; MCP access must be authenticated and authorized. | Accepted for the on-premises MVP: tools are allow-listed per agent and every call is audited; stdio MCP runs in one process. Any networked MCP transport needs a workload identity first. Decided by the owner, 2026-11-10. | Security Architect |
 | D-023 | Decided | Review | Dashboard KPIs were counted in the browser from the loaded page, so they would be wrong beyond one page. | `/api/v1/assets/summary` counts in SQL; one set of gap rules shared with the MCP tool (`ccc/assets.py`). | — |
 | D-024 | Decided | Build | PRD Part 6 proposes a repository layout (`backend/`, `agents/`, `integrations/`, `mcp/`, `platform/`). | The template's layout is used instead: `harness/` plus the `ccc/` package. PRD `integrations/` connectors become plugins in `ccc/plugins/` ([ADR 0003](../docs/adr/0003-repository-layout-follows-the-template.md)). | — |
-| D-025 | Open | PRD §3, §12 | Remediation tickets: the PRD schedules Jira in Phase 2 with explicit approval. The harness ships a ServiceNow plugin and no Jira plugin. Which system, and who may open tickets? | Ticketing is switched off (`APP_TICKETING_PROVIDER=none`); the MVP is read-only ([ADR 0005](../docs/adr/0005-read-only-mvp-ticketing-off.md)). Agents can never open tickets; only a permitted person through an endpoint. | CISO |
-| D-026 | Open | Build | Agent limits: at most 8 model calls, 20 tool calls and 50,000 tokens per run, 3 attempts on transient failures. Are these right for the Command Center's agents? | Harness defaults. | Principal AI Architect |
-| D-027 | Open | Glossary | Is an *asset owner* a person, a team, or either? Code and sample data hold a user name; the PRD risk example names a team ("Infrastructure"). | `asset_owner` is free text; the agent treats it as a person. | Business Owners |
-| D-028 | Open | Glossary | One word for the agent's answer about an asset: the code's class is `AssetBrief` and the dashboard button says "Review"; the endpoint is `/assets/{id}/review`; `ccc/CLAUDE.md` says "assistant brief". Recommend **brief**. | Both words in use; nothing renamed. | Product Owner |
+| D-025 | Decided | PRD §3, §12 | Remediation tickets: which system, and who may open tickets? | Jira, in Phase 2 with explicit approval; a Jira plugin in `ccc/plugins/` is scheduled then. Until then ticketing is switched off ([ADR 0005](../docs/adr/0005-read-only-mvp-ticketing-off.md)). `tickets:create` goes to the Security Operations persona only. Decided by the owner, 2026-11-10. | CISO |
+| D-026 | Decided | Build | Agent limits: at most 8 model calls, 20 tool calls and 50,000 tokens per run, 3 attempts on transient failures. | Harness defaults kept; revisit when a multi-asset or chat agent exists. Decided by the owner, 2026-11-10. | Principal AI Architect |
+| D-027 | Decided | Glossary | Is an *asset owner* a person, a team, or either? | Either. Stored as text; an owner type (person or team) is added when real data shows the mix. Decided by the owner, 2026-11-10. | Business Owners |
+| D-028 | Decided | Glossary | One word for the agent's answer about an asset. | **brief**. The endpoint `/assets/{id}/review`, the dashboard button and `test_review_endpoint_...` are renamed in one ticket. Decided by the owner, 2026-11-10. | Product Owner |
 | D-029 | Open | Glossary | *Control effectiveness* values. The PRD requires a separate effectiveness status but names no states. | Not implemented. | CISO / Internal Audit |
-| D-030 | Open | Glossary | Are "asset criticality" and "business criticality" (PRD Module 3 factors, agent output example) the same field as the asset's *criticality*? | One field, `criticality`. | CISO |
-| D-031 | Open | Glossary | Which fields count for *data completeness*? Code: owner, business unit, business service, location, known criticality. PRD Module 2 also requires asset type, environment, security findings, control status, risk rating. | `REQUIRED_FIELDS` in `ccc/assets.py`, the shorter list. | Data Engineer |
-| D-032 | Open | Glossary | The same gap has two names: flags say `no_owner` / `no_criticality`, the summary says `without_owner` / `without_criticality`. Recommend one prefix. | Both; renaming touches the API, the tool and the dashboard. | Product Owner |
+| D-030 | Decided | Glossary | Are "asset criticality" and "business criticality" the same field as *criticality*? | Yes: one field, `criticality`, on the asset. Decided by the owner, 2026-11-10. | CISO |
+| D-031 | Decided | Glossary | Which fields count for *data completeness*? | The code's five (`REQUIRED_FIELDS` in `ccc/assets.py`: owner, business unit, business service, location, known criticality). Findings, control status and risk rating are added when those tables exist. Decided by the owner, 2026-11-10. | Data Engineer |
+| D-032 | Decided | Glossary | The same gap has two names (`no_*` flags, `without_*` counts). | `without_*` everywhere; the flags `no_owner` and `no_criticality` are renamed in one ticket (API, MCP tool, evals, dashboard). Decided by the owner, 2026-11-10. | Product Owner |
 | D-033 | Open | Glossary | Does *finding* cover vulnerability findings, control-assessment findings and the findings behind a risk, or does each get its own term? | Not implemented. | Security Architect |
-| D-034 | Open | Glossary | "Unknown asset" (PRD Module 2 req. 5: an asset a source reports that the inventory lacks) versus lifecycle state `unknown` in the enum. Recommend a different word for the PRD's meaning (for example *unregistered*). | Lifecycle enum has `unknown`; unregistered assets are not detected. | Data Engineer |
-| D-035 | Open | Glossary | *Persona* (PRD §2) or *role* (code `ROLE_PERMISSIONS`) for a user group? Recommend persona for the group, role for its key. | Code says role. | Product Owner |
+| D-034 | Decided | Glossary | "Unknown asset" (PRD Module 2 req. 5) versus lifecycle state `unknown`. | **unregistered**: an asset a source reports that the inventory lacks. The lifecycle state keeps `unknown`. Unregistered assets are not yet detected. Decided by the owner, 2026-11-10. | Data Engineer |
+| D-035 | Decided | Glossary | *Persona* or *role* for a user group? | Persona for the group (documents, screens); role for its key in code (`ROLE_PERMISSIONS`, the OIDC role map). Nothing renamed. Decided by the owner, 2026-11-10. | Product Owner |
 | D-036 | Open | Glossary | *Risk rating* (asset field), *Enterprise Risk Score* (KPI) and *risk priority* (agent output): three words, how many things? | None implemented. | CISO |
-| D-037 | Open | Glossary | *Source system* (code, PRD §7), "source platform" (PRD §11), "integrated platform" (Module 2), "data source" (PRD §7 table); API field `sources`. Recommend source system. | `source_system` column; API field `sources`. | Data Engineer |
+| D-037 | Decided | Glossary | One word for an outside system that reports assets or findings. | **source system**. The API field `sources` becomes `source_systems` in the same rename ticket as D-032. Decided by the owner, 2026-11-10. | Data Engineer |
 
 ## Known gaps against the PRD
 

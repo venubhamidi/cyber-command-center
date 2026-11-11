@@ -1,8 +1,8 @@
 # Glossary: Cyber Command Center
 
-The domain's terms, from `docs/PRD.pdf` (v1.0) and the code. One meaning per word. Where the PRD
-and the code disagree, the definition states what the code does today and names the `DECISIONS.md`
-row where the owner settles the word; nothing here is settled by the glossary alone. Foundation
+The domain's terms, from `docs/PRD.pdf` (v1.0) and the code. One meaning per word. Wording was
+settled with the owner on 2026-11-10 (`DECISIONS.md` D-027 to D-037); where the code still uses
+an older word, the entry says so and names the row, and the rename is a ticket. Foundation
 terms (harness, agent, tool, plugin, seam) are in the root `CONTEXT.md`.
 
 ## asset
@@ -14,10 +14,9 @@ Example: `EA-000001`, host `fin-erp-db01`, a `database` in Finance serving ERP, 
 Not: a finding, a source record, an application.
 
 ## asset owner
-The accountable party recorded on an asset. In the code and the sample data this is a person
-(`asset_owner`, a user name); the PRD's risk example names a team ("Owner: Infrastructure").
-Whether an owner is a person, a team or either is D-027. An asset with no owner is a gap, never
-an asset that belongs to nobody by design.
+The accountable party recorded on an asset: a person or a team (D-027). Stored as text in
+`asset_owner`; an owner type will be recorded once real data shows the mix. An asset with no
+owner is a gap, never an asset that belongs to nobody by design.
 Example: `j.alvarez` owns `EA-000001`; `EA-000003` has no owner and is flagged `no_owner`.
 Not: the control owner, the accountable owner of a risk, a business owner (persona).
 
@@ -32,8 +31,8 @@ Not: asset category (the PRD's three groups IT, Cloud, OT), which the code does 
 The Asset Summary Agent's advisory answer about one asset, in the PRD Module 7 format: executive
 summary, supporting facts, business impact, recommended action, source references, last-updated
 time, data completeness. Facts, sources, time and completeness are filled by code; the model
-writes only the summary, impact and action. The endpoint, tests and screen call this a "review";
-which word wins is D-028.
+writes only the summary, impact and action. The endpoint, the dashboard button and one test
+still say "review"; they are renamed to brief (D-028).
 Example: a brief on `EA-000003` says the asset has no owner and recommends naming one.
 Not: a risk record, a chat answer about many assets.
 
@@ -72,26 +71,26 @@ Not: control effectiveness, compliance percentage.
 
 ## criticality
 How much the business depends on an asset: `critical`, `high`, `medium`, `low` or `unknown`
-(`asset_criticality` enum). A blank value is stored as `unknown`, never as `low`. The PRD also says
-"asset criticality" and "business criticality"; whether those are this field is D-030, and who
-may set it is D-009.
+(`asset_criticality` enum). A blank value is stored as `unknown`, never as `low`. The PRD's
+"asset criticality" and "business criticality" are this same field (D-030). Who may set it is
+still D-009.
 Example: `EA-000006` has criticality `unknown` and is flagged `no_criticality`.
 Not: vulnerability severity, risk rating.
 
 ## data completeness
 Whether an asset record has every required field, reported with a brief as `complete` plus the
-list of `missing_fields`. The code requires owner, business unit, business service, location and
-a known criticality; the PRD's required list is longer (type, environment, findings, control
-status, risk rating). Which fields count is D-031.
+list of `missing_fields`. Required: owner, business unit, business service, location and a known
+criticality (D-031). Findings, control status and risk rating join the list when those tables
+exist.
 Example: `EA-000003` is incomplete; missing fields: `asset_owner`.
 Not: data freshness (when a source last reported), a data-quality flag.
 
 ## data-quality flag
 A gap on an asset computed by the rules in code and shared by the API summary, the MCP gap tool
-and the agent: `no_owner`, `no_criticality`, `potentially_inactive`. The summary endpoint counts
-the same gaps as `without_owner`, `without_criticality`, `potentially_inactive`; the two namings
-are D-032.
-Example: `EA-000003` carries `no_owner`; the summary counts it under `without_owner`.
+and the agent: `without_owner`, `without_criticality`, `potentially_inactive`. The summary
+endpoint counts the same gaps under the same names. The flags still read `no_owner` and
+`no_criticality` in code until the rename ticket lands (D-032).
+Example: `EA-000003` carries `without_owner`; the summary counts it under `without_owner`.
 Not: a finding, data completeness, the PRD's per-finding "data quality status".
 
 ## enterprise asset ID
@@ -106,15 +105,15 @@ A record from a source system that says something is wrong with an asset, kept w
 source record id, collection and update times, data-quality status, correlation status and
 provenance (PRD §7). Source facts are never overwritten by model output. Not yet in the code.
 The PRD uses the word for vulnerability findings, control-assessment findings and the findings
-behind a risk; whether one term covers all three is D-033.
+behind a risk; whether one term covers all three waits for the risk model (D-033).
 Example: Tenable record `TEN-10001`, a critical CVE on `PROD-SRV-001`.
 Not: a data-quality flag, a risk.
 
 ## lifecycle state
 Whether an asset is still in service: `active`, `potentially_inactive`, `retired` or `unknown`
 (`asset_lifecycle` enum). The code never moves an asset to `retired` on its own (D-012). The
-PRD's "unknown asset" (Module 2 requirement 5) is something else: an asset a source reports that
-the inventory does not know; the clash with the `unknown` state is D-034.
+PRD's "unknown asset" (Module 2 requirement 5) is something else, called an unregistered asset
+here (D-034).
 Example: `EA-000004` is `active`; an asset missing from the latest CSV becomes `potentially_inactive`.
 Not: environment, criticality.
 
@@ -122,8 +121,8 @@ Not: environment, criticality.
 A group of users with one set of needs, as the PRD §2 lists them: CIO, CISO, CTO, Security
 Operations, Infrastructure Leadership, Application Owners, Business Owners, Internal Audit,
 Platform Administrator. The code implements each as a role key in `ROLE_PERMISSIONS`
-(`ciso`, `security_ops`, `platform_admin`, ...) with a permission set. Whether to say persona or
-role is D-035.
+(`ciso`, `security_ops`, `platform_admin`, ...) with a permission set: persona is the group, role
+is its key in code (D-035).
 Example: `internal_audit` may read controls, assets and the audit log, and cannot run agents.
 Not: a login, a permission.
 
@@ -141,14 +140,20 @@ for an asset or service into an executive statement: title, business unit, affec
 assets, rating, business impact, accountable owner, recommended action, evidence, last updated
 (PRD Module 6). The model behind the rating is explainable and version-controlled, and is not
 yet defined (D-007). Not yet in the code. The PRD also says "risk rating", "Enterprise Risk Score"
-and "risk priority"; which is which is D-036.
+and "risk priority"; which is which waits for the risk model (D-036).
 Example: "Critical production server exposure", severity Critical, affecting `PROD-SRV-001`.
 Not: a vulnerability, a finding, a data-quality flag.
 
 ## source system
 An outside system that reports assets or findings and whose name is kept on every record it
 contributed (`asset_sources.source_system`; PRD §7 "original source system"). Each is reached
-through a plugin. The PRD also says "source platform", "integrated platform" and "data source";
-the API field is `sources`; which word wins is D-037.
+through a plugin. The PRD's "source platform", "integrated platform" and "data source" all mean
+this. The API field `sources` becomes `source_systems` in the rename ticket (D-037).
 Example: `asset_db_csv` today; Tenable, Defender, SCCM, Intune, Chronicle and Entra ID later.
 Not: a model provider, the database.
+
+## unregistered asset
+An asset that a source system reports but the inventory does not hold (PRD Module 2 requirement
+5, "identify unknown assets"). Not the lifecycle state `unknown`. Not yet detected by the code.
+Example: a server Tenable scans that has no enterprise asset ID.
+Not: an asset with lifecycle state `unknown`, a potentially inactive asset.
