@@ -8,6 +8,9 @@ export interface Asset {
   asset_owner: string | null;
   business_unit: string | null;
   business_service: string | null;
+  location: string | null;
+  operating_system: string | null;
+  mac_address: string | null;
   criticality: "critical" | "high" | "medium" | "low" | "unknown";
   environment: string;
   lifecycle_state: "active" | "potentially_inactive" | "retired" | "unknown";

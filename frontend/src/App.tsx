@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import { api, type AgentResponse, type Asset, type AssetSummary, type Health, type Page } from "./api";
+import { AssetDetailPage } from "./AssetDetailPage";
 import { GapChart } from "./GapChart";
 import { Shell } from "./Shell";
+import { useAssetRoute } from "./useAssetRoute";
 import "./App.css";
 
 // PRD Module 1: every figure carries data freshness and source systems.
@@ -20,6 +22,7 @@ export default function App() {
   const [summary, setSummary] = useState<AssetSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [criticality, setCriticality] = useState<string>("");
+  const [selected, navigate] = useAssetRoute();
   const [brief, setBrief] = useState<{ id: string; result?: AgentResponse; error?: string } | null>(null);
 
   function runBrief(id: string) {
@@ -42,6 +45,14 @@ export default function App() {
   }, [criticality]);
 
   const items = page?.items ?? [];
+
+  if (selected) {
+    return (
+      <Shell health={health}>
+        <AssetDetailPage id={selected} onBack={() => navigate(null)} />
+      </Shell>
+    );
+  }
 
   return (
     <Shell health={health}>
@@ -86,7 +97,7 @@ export default function App() {
         <tbody>
           {items.map((a) => (
             <tr key={a.id}>
-              <td className="mono">{a.enterprise_asset_id}</td>
+              <td className="mono"><a href={`?asset=${a.enterprise_asset_id}`} onClick={(e) => { e.preventDefault(); navigate(a.enterprise_asset_id); }}>{a.enterprise_asset_id}</a></td>
               <td className="mono">{a.hostname ?? <Missing />}</td>
               <td>{a.asset_type}</td>
               <td>{a.asset_owner ?? <Missing />}</td>
