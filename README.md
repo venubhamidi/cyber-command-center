@@ -10,8 +10,11 @@ CSV ──ingest──▶ PostgreSQL ──▶ FastAPI (login · roles · rate l
                     └── asset-mcp (MCP) ◀── Asset Summary Agent ──▶ model gateway ──▶ usage records
 ```
 
-What exists today: asset inventory from a sample CSV, 6 endpoints, one agent with 8 evaluation
-cases, 2 MCP tools, one dashboard screen, 81 tests. What does not: see "Known gaps" in
+What exists today: asset inventory from a sample CSV; endpoints for inventory, summary, asset
+detail (by enterprise asset ID, with data-quality flags, completeness and source systems), asset
+history, an assistant brief, the caller's permissions and AI usage; one agent with 8 evaluation
+cases; 2 MCP tools; two screens (inventory with a gap chart, asset detail with history and brief);
+111 tests. Design: `ARCHITECTURE.md`. What does not: see "Known gaps" in
 `ccc/DECISIONS.md`, which also lists the decisions needed before more is built.
 
 ## Run it locally
