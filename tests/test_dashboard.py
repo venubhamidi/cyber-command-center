@@ -1,5 +1,5 @@
 """Executive dashboard (PRD Module 1): tables, mock connectors, KPI math, snapshots, endpoint."""
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -8,6 +8,7 @@ from ccc.dashboard import compute_kpis
 from ccc.ingest import ingest_csv
 from ccc.ingest_sources import ingest_feed, ingest_sources
 from ccc.plugins.mock_connectors import Feed
+from ccc.snapshot import previous_values, trend, write_snapshots
 from harness.db import apply_migrations, get_conn
 
 
@@ -148,4 +149,31 @@ def test_stale_rows_are_left_out_of_every_count(seeded):
         ingest_feed(conn, Feed("mock_chronicle", "incidents", "2026-11-11T06:10:00Z", []))   # the source now reports nothing
         conn.commit()
     k = _kpis()
-    assert k["open_incidents"].value == 0 and k["open_incidents"].source_systems == []
+    assert k["open_incidents"].value is None and k["open_incidents"].source_systems == []   # unknown, not zero
+
+
+# --- Ticket 04: snapshots and trend ---------------------------------------------------------------
+
+def test_previous_value_and_trend_come_from_the_latest_earlier_snapshot(seeded):
+    """The mock history holds 2026-11-09 values; today's are computed. patch 33.3 = 33.3 flat,
+    exposure 7 < 9 down, risk 56.9 < 61.2 down, posture 43.1 > 38.8 up."""
+    with get_conn(settings.database_url) as conn:
+        assert write_snapshots(conn, date(2026, 11, 10), now=NOW) == 8
+        assert write_snapshots(conn, date(2026, 11, 10), now=NOW) == 8          # same day again: replaced, not duplicated
+        conn.commit()
+        prev = previous_values(conn, date(2026, 11, 10))
+        k = compute_kpis(conn, now=NOW)
+    assert _count("kpi_snapshots") == 16
+    assert prev["vulnerability_exposure"] == (9.0, date(2026, 11, 9))
+    assert trend(k["patch_compliance"].value, prev["patch_compliance"][0]) == "flat"
+    assert trend(k["vulnerability_exposure"].value, prev["vulnerability_exposure"][0]) == "down"
+    assert trend(k["enterprise_risk_score"].value, prev["enterprise_risk_score"][0]) == "down"
+    assert trend(k["security_posture"].value, prev["security_posture"][0]) == "up"
+
+
+def test_no_snapshot_means_no_history_not_zero(sample_csv):
+    ingest_csv(sample_csv)
+    with get_conn(settings.database_url) as conn:
+        assert previous_values(conn, date(2026, 11, 10)) == {}
+        assert write_snapshots(conn, date(2026, 11, 10), now=NOW) == 1           # only critical_assets has a value
+    assert trend(3.0, None) == "no_history"

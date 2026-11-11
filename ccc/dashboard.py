@@ -4,7 +4,8 @@ Every rule here is the one the PRD states, or a provisional one recorded in DECI
 patch compliance excludes unknown, offline, exempt and non-applicable (Module 4); exposure counts
 one finding per CVE per asset (Module 3 "deduplicated"); NIST weights are provisional (D-008);
 the risk score and posture are provisional v0 (D-039); SLA days come from settings (D-038).
-Stale rows (a source stopped reporting them) are left out of every count.
+Stale rows (a source stopped reporting them) are left out of every count, and a KPI whose source
+has reported nothing is None (unknown), never zero.
 
 `FORMULA_VERSION` is stored on every snapshot so a change of weights never rewrites history.
 """
@@ -111,10 +112,10 @@ def compute_kpis(conn, now: datetime | None = None) -> dict[str, KpiValue]:
         "enterprise_risk_score": (risk, risk_as_of, risk_sources),
         "security_posture": (posture, risk_as_of, risk_sources),
         "patch_compliance": (patch, p["as_of"], _sources(conn, "patch_status")),
-        "vulnerability_exposure": (float(f["exposure"]), f["as_of"], _sources(conn, "findings")),
+        "vulnerability_exposure": (float(f["exposure"]) if f["as_of"] else None, f["as_of"], _sources(conn, "findings")),
         "nist_compliance": (nist, c["as_of"], _sources(conn, "control_assessments")),
         "critical_assets": (float(a["n"]), a["as_of"], asset_sources),
-        "open_incidents": (float(i["n"]), i["as_of"], _sources(conn, "incidents")),
+        "open_incidents": (float(i["n"]) if i["as_of"] else None, i["as_of"], _sources(conn, "incidents")),
         "remediation_sla": (sla, f["as_of"], _sources(conn, "findings")),
     }
     return {k: KpiValue(k, v, KPIS[k][0], as_of, src) for k, (v, as_of, src) in values.items()}
