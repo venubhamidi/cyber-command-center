@@ -5,6 +5,13 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+class DataCompleteness(BaseModel):
+    """PRD Module 7 part 7: whether the record has every required field (D-031)."""
+
+    complete: bool
+    missing_fields: list[str]
+
+
 class Asset(BaseModel):
     id: int
     enterprise_asset_id: str
@@ -23,6 +30,9 @@ class Asset(BaseModel):
     last_seen_at: datetime
     # PRD Module 1: every KPI/record carries freshness and source systems
     source_systems: list[str] = Field(default_factory=list)
+    # Derived at read time by the rules in ccc/assets.py; never stored (ARCHITECTURE.md, database design)
+    flags: list[str] = Field(default_factory=list)
+    data_completeness: DataCompleteness | None = None
 
 
 class AssetSummary(BaseModel):

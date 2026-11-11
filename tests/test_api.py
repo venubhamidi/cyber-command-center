@@ -58,6 +58,17 @@ def test_asset_is_addressed_by_enterprise_asset_id(client):
     assert client.get("/api/v1/assets/1", headers=CISO).status_code == 404        # the row id is not an address
 
 
+def test_asset_detail_carries_flags_and_completeness_from_the_rules(client):
+    """Expected values come from ccc/sample_assets.csv: EA-000003 has no owner, EA-000006 no criticality."""
+    a = client.get("/api/v1/assets/EA-000003", headers=CISO).json()
+    assert a["flags"] == ["without_owner"]
+    assert a["data_completeness"] == {"complete": False, "missing_fields": ["asset_owner"]}
+    b = client.get("/api/v1/assets/EA-000006", headers=CISO).json()
+    assert b["flags"] == ["without_criticality"] and "criticality" in b["data_completeness"]["missing_fields"]
+    c = client.get("/api/v1/assets/EA-000001", headers=CISO).json()
+    assert c["flags"] == [] and c["data_completeness"] == {"complete": True, "missing_fields": []}
+
+
 def test_asset_carries_freshness_and_source_systems(client):
     a = client.get("/api/v1/assets/EA-000001", headers=CISO).json()
     assert a["last_seen_at"] and a["source_systems"] == ["asset_db_csv"]

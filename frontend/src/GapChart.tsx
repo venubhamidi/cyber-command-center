@@ -20,7 +20,7 @@ export function GapChart({ summary }: { summary: AssetSummary }) {
       formatter: (p: { name: string; value: number }) => `${p.name}: <b>${p.value}</b> of ${summary.total_assets} assets`,
     },
     xAxis: {
-      type: "value", minInterval: 1,
+      type: "value", minInterval: 1, max: Math.max(summary.total_assets, 1),
       axisLine: { show: false }, axisTick: { show: false },
       splitLine: { lineStyle: { color: tokens.line } },
       axisLabel: { color: tokens.muted, fontSize: 11 },

@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ccc.agents.asset_agent import summarize_asset
-from ccc.api.schemas import Asset, AssetSummary, UsageRow
-from ccc.assets import gap_counts
+from ccc.api.schemas import Asset, AssetSummary, DataCompleteness, UsageRow
+from ccc.assets import asset_flags, gap_counts, missing_required_fields
 from harness.agents.contract import AgentResponse
 from harness.app import db_url
 from harness.db import get_conn
@@ -21,6 +21,12 @@ SELECT a.id, a.enterprise_asset_id, a.hostname, host(a.ip_address) AS ip_address
        COALESCE(array_agg(s.source_system ORDER BY s.source_system) FILTER (WHERE s.source_system IS NOT NULL), '{}') AS source_systems
 FROM assets a LEFT JOIN asset_sources s ON s.asset_id = a.id
 """
+
+
+def _asset(row: dict) -> Asset:
+    """One asset with its derived fields, computed by the shared rules (the agent uses the same)."""
+    missing = missing_required_fields(row)
+    return Asset(**row, flags=asset_flags(row), data_completeness=DataCompleteness(complete=not missing, missing_fields=missing))
 
 
 @router.get("/assets", response_model=Page[Asset])
@@ -48,7 +54,7 @@ def list_assets(
             f"{ASSET_SELECT} {where_sql} GROUP BY a.id ORDER BY a.id LIMIT %(limit)s OFFSET %(offset)s",
             {**params, "limit": limit, "offset": offset},
         ).fetchall()
-    return Page(items=[Asset(**r) for r in rows], total=total, limit=limit, offset=offset)
+    return Page(items=[_asset(r) for r in rows], total=total, limit=limit, offset=offset)
 
 
 @router.get("/assets/summary", response_model=AssetSummary)
@@ -67,7 +73,7 @@ def get_asset(enterprise_asset_id: str, _: Principal = Depends(require("assets:r
                            (enterprise_asset_id,)).fetchone()
     if row is None:
         raise HTTPException(404, "Asset not found")
-    return Asset(**row)
+    return _asset(row)
 
 
 @router.post("/assets/{enterprise_asset_id}/brief", response_model=AgentResponse)

@@ -13,6 +13,8 @@ export interface Asset {
   lifecycle_state: "active" | "potentially_inactive" | "retired" | "unknown";
   last_seen_at: string;
   source_systems: string[];
+  flags: string[];
+  data_completeness: { complete: boolean; missing_fields: string[] } | null;
 }
 
 export interface Page<T> {
