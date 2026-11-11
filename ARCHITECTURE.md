@@ -154,6 +154,84 @@ Sizing, from the assumptions below: assets in the tens of thousands, history in 
 millions per year, audit in the millions per year. All fit one instance with the existing
 indexes; partition `asset_history` and `audit_log` by month only past roughly ten million rows.
 
+## Executive dashboard (Module 1), approved 2026-11-10
+
+The landing page: eight KPI tiles and the top five enterprise risks. Assets are real (Module 2).
+Findings, patch status, control assessments, incidents and risks come from **mock connectors**
+that load into real tables; when a real connector arrives only the connector changes. No model
+call anywhere in this feature; every number is SQL plus versioned Python.
+
+```
+ seed files (ccc/mock/*.json)             ccc/sample_assets.csv
+        |                                        |
+        v                                        v
+ connector plugins (kind "connector")        ingest_csv
+  mock_tenable mock_sccm mock_grc                |
+  mock_chronicle mock_risk    fetch() only       |
+        |                                        |
+        v                                        v
+ ccc/ingest_sources.py  upsert, mark missing, never DELETE      deterministic code
+        |
+        v
+ PostgreSQL (ccc/migrations/002_dashboard.sql)
+   findings  patch_status  control_assessments  incidents  risks  risk_assets  kpi_snapshots
+        |  SQL aggregates                          ^
+        v                                          |  python -m ccc.snapshot   (daily, by ops cron)
+ ccc/dashboard.py   KPI math, FORMULA_VERSION  ----+
+        |
+        v
+ GET /api/v1/dashboard   require("dashboard:read")        audit, rate limit, auth: harness
+ GET /api/v1/{findings|patch-status|controls|incidents}   each behind its module permission
+        |
+        v
+ DashboardPage: 8 tiles + top-5 risks; the inventory becomes a tab (?view=assets)
+```
+
+Each KPI carries: value, previous value (latest earlier snapshot), trend (`up`, `down`, `flat`,
+`no_history`), `data_as_of` (oldest collected_at among its sources), `source_systems`, and a
+drill-down path. Rules written as code and tests (`ccc/dashboard.py`):
+
+| KPI | Calculation | Sources |
+|---|---|---|
+| Critical Assets | assets with criticality `critical` and lifecycle `active` | assets |
+| Vulnerability Exposure | open findings of severity critical or high, one per (cve, asset) | findings |
+| Patch Compliance | compliant / applicable; applicable excludes `non_applicable`, `unknown`, `offline`, `exempt`; unknown is never compliant | patch_status |
+| NIST Compliance | implemented 1.0, partially 0.5, else 0, over applicable controls; `not_assessed` and `evidence_pending` count 0 (weights provisional, D-008) | control_assessments |
+| Open Incidents | incidents with status `open` | incidents |
+| Remediation SLA | findings closed on or before due date / findings whose due date has passed or that closed; SLA days by severity 7/30/90/180 (D-038) | findings |
+| Enterprise Risk Score | provisional v0 (D-039): mean of exposure, patch gap, NIST gap and incident pressure, 0..100 | the four above |
+| Security Posture | 100 minus the risk score (D-039) | same |
+
+Tables (append-only migration `002_dashboard.sql`), each with the PRD §7 provenance fields
+`source_system`, `source_record_id`, `collected_at`, `updated_at`, and `data_quality_status`:
+
+| Table | For | Key |
+|---|---|---|
+| `findings` | one vulnerability on one asset: severity, cvss, cve, exploitable, known_exploited, status, first/last seen, due_at, closed_at | (source_system, source_record_id) |
+| `patch_status` | one asset per source: `compliant`, `missing`, `failed`, `unknown`, `offline`, `exempt`, `non_applicable`; missing_count | (asset_id, source_system) |
+| `control_assessments` | control id and title, framework, status (six PRD states), effectiveness text (D-029), assessed_at, assessor | (source_system, source_record_id) |
+| `incidents` | title, severity, status open/closed, opened_at, closed_at | (source_system, source_record_id) |
+| `risks`, `risk_assets` | PRD Module 1 risk fields plus `model_version`; link rows to assets | risk id |
+| `kpi_snapshots` | kpi, period_date, value, formula_version, source_systems, computed_at | (kpi, period_date) |
+
+Guardrails: `dashboard:read` on the dashboard; each drill-down list keeps its module permission,
+so a CIO sees the vulnerability count and not the list. Connectors only fetch; ingestion upserts
+and never deletes, a record absent from its source is marked `data_quality_status = 'stale'`.
+Rows loaded from mocks carry `source_system` starting with `mock_` and the tile says so. The
+formula version is stored on every snapshot, so changing a weight never rewrites history.
+
+Tests at the seams: hand-computed expected values for all eight KPIs over the seed; an all-unknown
+fleet gives 0 percent patch compliance; the same CVE on one asset from two scanners counts once;
+no snapshot means `no_history`, never zero; the snapshot command is idempotent per day; the
+permission matrix on `/dashboard`; top five ordered by rating then updated_at with all nine PRD
+fields. No evals: nothing calls a model.
+
+Tripwire: the dashboard is six aggregate queries per load. Past roughly a million findings, serve
+the daily snapshot and recompute on ingest.
+
+Not built: real connectors, Module 3 to 6 screens and filters, the risk engine (risks are seeded,
+not derived), a scheduler, incident detail.
+
 ## Guardrails, by layer
 
 - **Entry:** every `/api/*` call audited including refusals; rate limited; a permission on every

@@ -31,8 +31,8 @@ control and risk modules being designed: D-029, D-033, D-036.
 | D-004 | Decided | PRD §8 | Should `/platform/health` be unauthenticated? | Public; it is the liveness probe and returns no secrets (`test_health_is_public`). Decided by the owner, 2026-11-10. | Security Architect |
 | D-005 | Open | Build | PRD requires IP and MAC "where applicable" but says nothing about normalization. Uppercase MACs produced phantom history rows. | Normalized in ingestion; the policy on canonical forms for correlation still needs a decision. | Data Engineer |
 | D-006 | Decided | Module 8 | Cost per token: which price list, who maintains it, how are local-model costs computed? | A price table setting per provider and model from the provider's published list price, maintained by the Platform Admin; local models at an agreed internal rate per token; `cost_usd` stays NULL for any model not in the table (mock = 0). Decided by the owner, 2026-11-10. Implementation is a ticket. | Platform Admin |
-| D-007 | Open | Module 1 | Enterprise Risk Score is a "weighted risk model" with no weights or formula. | Not implemented. | CISO |
-| D-008 | Open | Module 5 | NIST compliance is a "weighted applicable control assessment" with no weights defined. | Not implemented. | CISO / Internal Audit |
+| D-007 | Open | Module 1 | Enterprise Risk Score is a "weighted risk model" with no weights or formula. | Provisional v0 formula in code (D-039), labelled provisional on the tile; the CISO's weights replace it with a version bump. | CISO |
+| D-008 | Open | Module 5 | NIST compliance is a "weighted applicable control assessment" with no weights defined. | Provisional weights in `ccc/dashboard.py`: implemented 1.0, partially 0.5, else 0, over applicable controls. | CISO / Internal Audit |
 | D-009 | Open | Module 2 | Criticality source of truth: who assigns it, and can a source system override a manual value? | Blank ⇒ `unknown`; surfaced as a KPI. | Business Owners |
 | D-010 | Open | Module 2 | Correlation keys for dedup across sources (hostname, MAC, serial, cloud resource ID?). PRD says "multiple identifiers" without ranking them. | Keys only on `enterprise_asset_id`. | Data Engineer |
 | D-011 | Decided | PRD §5 | Event broker. | None until the first connector that pushes events; ingestion stays synchronous. Revisit when such a connector is scheduled. Decided by the owner, 2026-11-10. | Principal AI Architect |
@@ -62,6 +62,10 @@ control and risk modules being designed: D-029, D-033, D-036.
 | D-035 | Decided | Glossary | *Persona* or *role* for a user group? | Persona for the group (documents, screens); role for its key in code (`ROLE_PERMISSIONS`, the OIDC role map). Nothing renamed. Decided by the owner, 2026-11-10. | Product Owner |
 | D-036 | Open | Glossary | *Risk rating* (asset field), *Enterprise Risk Score* (KPI) and *risk priority* (agent output): three words, how many things? | None implemented. | CISO |
 | D-037 | Decided | Glossary | One word for an outside system that reports assets or findings. | **source system**; API field `source_systems` (asset detail ticket 02). Decided by the owner, 2026-11-10. | Data Engineer |
+| D-038 | Decided | Module 1 | Remediation SLA needs days per severity; the PRD names none. | Settings `sla_days`: critical 7, high 30, medium 90, low 180. Decided by the owner, 2026-11-10 (dashboard design, item 2). | CISO |
+| D-039 | Decided | Module 1 | Enterprise Risk Score and Security Posture have no formula (D-007). | Provisional v0 in `ccc/dashboard.py`, `FORMULA_VERSION` stored on every snapshot; posture = 100 - risk score; tile labelled provisional. Decided by the owner, 2026-11-10 (dashboard design, item 1). | CISO |
+| D-040 | Decided | Module 1 | Drill-down for modules not yet built. | Critical Assets drills to the inventory filtered by criticality; other tiles land on a plain read-only list of the underlying records; filters arrive with each module. Decided by the owner, 2026-11-10 (item 3). | Product Owner |
+| D-041 | Decided | Module 1 | Landing page. | The dashboard is the root; the inventory is a tab. Decided by the owner, 2026-11-10 (item 5). | Product Owner |
 
 ## Known gaps against the PRD
 
