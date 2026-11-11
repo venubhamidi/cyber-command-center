@@ -87,6 +87,72 @@ Later modules add, one slice at a time and only when a feature reads them: findi
 status, controls and assessments, risks. Each carries the PRD §7 provenance fields (source
 system, source record id, collected at, updated at, data-quality status, correlation status).
 
+## Database design
+
+One PostgreSQL database, two groups of tables. Harness tables come from `harness/migrations/`
+and are the same in every application; domain tables come from `ccc/migrations/`, append-only,
+one numbered file per change.
+
+```
+ DOMAIN (ccc/migrations)                              HARNESS (harness/migrations, read-only)
+
+ assets                                               audit_log            every API call and
+ ├ id                 BIGSERIAL PK                     ├ id, occurred_at    agent tool call,
+ ├ enterprise_asset_id TEXT UNIQUE   ← the key         ├ principal, role    refused ones too;
+ ├ hostname, ip_address INET, mac_address MACADDR      ├ action, resource   hash-chained
+ ├ asset_type         ENUM (22 values: IT, cloud, OT)  ├ status_code
+ ├ asset_owner, business_unit, business_service        ├ request_id, detail JSONB
+ ├ criticality        ENUM critical…low, unknown       └ prev_hash, row_hash
+ ├ location, environment ENUM (…, unknown)
+ ├ operating_system                                   agent_definitions    one row per agent id
+ ├ lifecycle_state    ENUM active, potentially_        agent_executions     one row per run:
+ │                    inactive, retired, unknown        input/output JSONB, status, counts,
+ ├ first_seen_at, last_seen_at                         guardrail_events, latency
+ └ created_at, updated_at                             model_usage          one row per model call:
+   idx: lower(hostname), ip_address, business_unit     tokens, cost_usd (NULL = unknown)
+        │ 1                                            eval_runs, eval_results  score history
+        │
+        ├──< asset_sources   (asset_id, source_system) PK
+        │     source_record_id, first_seen_at, last_seen_at
+        │     one row per source system that reported the asset
+        │
+        └──< asset_history   id PK, asset_id FK
+              changed_at, changed_by, field, old_value, new_value
+              append-only; written by ingestion for every field change
+```
+
+Rules the schema encodes:
+- **The enterprise asset ID is the one key.** Everything addresses an asset by it; the row id
+  stays internal. Correlation on other identifiers waits for D-010 and will add an
+  `asset_identifiers` table (D-019), not more columns.
+- **Closed value sets are enums that include `unknown`**, and `unknown` is the default where a
+  value may be missing. There is no favourable default anywhere.
+- **Nothing is deleted.** A source that stops reporting an asset flips `lifecycle_state` to
+  `potentially_inactive` and writes a history row; `retired` is set only by a person (D-012).
+- **Facts and derived values are separate.** Flags, counts and completeness are computed from
+  these columns by `ccc/assets.py` at read time and never stored. Model output lives only in
+  `agent_executions.output` and never in a domain table.
+- **Provenance travels with the record.** `asset_sources` says who reported an asset and when;
+  every future finding carries source system, source record id, collected and updated times,
+  data-quality and correlation status (PRD §7).
+- **Identifiers are normalised before comparison** (lower-case MAC, canonical IP), or history
+  fills with phantom changes.
+
+Growth, one slice at a time, only when a feature reads the table (each needs its own design
+pass before it is built):
+
+| Module | Tables, in outline | Keyed by |
+|---|---|---|
+| 3 Vulnerabilities | `findings` (provenance fields, severity, cve, exploitability, status), `asset_findings` | finding by (source_system, source_record_id); link by asset id |
+| 4 Patch compliance | `patch_status` per asset and source: applicable, non-applicable, unknown, offline, exempt, failed | asset id, source system |
+| 5 Controls | `controls` (library), `framework_mappings`, `control_assessments` (status, effectiveness, assessor, dates), `evidence_records`, `asset_controls` | control id |
+| 6 Risk | `risks`, `risk_findings` | risk id; model version on every row |
+| Platform | `data_sources` (connector configuration), `ingestion_runs` | source system |
+
+Sizing, from the assumptions below: assets in the tens of thousands, history in the low
+millions per year, audit in the millions per year. All fit one instance with the existing
+indexes; partition `asset_history` and `audit_log` by month only past roughly ten million rows.
+
 ## Guardrails, by layer
 
 - **Entry:** every `/api/*` call audited including refusals; rate limited; a permission on every
