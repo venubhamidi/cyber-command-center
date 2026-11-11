@@ -3,7 +3,15 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ccc.agents.asset_agent import summarize_asset
-from ccc.api.schemas import Asset, AssetDetail, AssetSummary, DataCompleteness, SourceSystemRecord, UsageRow
+from ccc.api.schemas import (
+    Asset,
+    AssetDetail,
+    AssetSummary,
+    DataCompleteness,
+    HistoryEntry,
+    SourceSystemRecord,
+    UsageRow,
+)
 from ccc.assets import asset_flags, gap_counts, missing_required_fields
 from harness.agents.contract import AgentResponse
 from harness.app import db_url
@@ -79,6 +87,22 @@ def get_asset(enterprise_asset_id: str, _: Principal = Depends(require("assets:r
     asset = _asset(row)
     return AssetDetail(**asset.model_dump(exclude={"source_systems"}),
                        source_systems=[SourceSystemRecord(**s) for s in sources])
+
+
+@router.get("/assets/{enterprise_asset_id}/history", response_model=Page[HistoryEntry])
+def asset_history(enterprise_asset_id: str, _: Principal = Depends(require("assets:read")), db: str = Depends(db_url),
+                  limit: int = Query(50, ge=1, le=500), offset: int = Query(0, ge=0)) -> Page[HistoryEntry]:
+    """What changed on an asset, newest first (PRD §11 history; written by ingestion, never edited)."""
+    with get_conn(db) as conn:
+        asset = conn.execute("SELECT id FROM assets WHERE enterprise_asset_id = %s", (enterprise_asset_id,)).fetchone()
+        if asset is None:
+            raise HTTPException(404, "Asset not found")
+        total = conn.execute("SELECT count(*) AS n FROM asset_history WHERE asset_id = %s", (asset["id"],)).fetchone()["n"]
+        rows = conn.execute(
+            "SELECT changed_at, changed_by, field, old_value, new_value FROM asset_history WHERE asset_id = %(id)s "
+            "ORDER BY changed_at DESC, id DESC LIMIT %(limit)s OFFSET %(offset)s",
+            {"id": asset["id"], "limit": limit, "offset": offset}).fetchall()
+    return Page(items=[HistoryEntry(**r) for r in rows], total=total, limit=limit, offset=offset)
 
 
 @router.post("/assets/{enterprise_asset_id}/brief", response_model=AgentResponse)

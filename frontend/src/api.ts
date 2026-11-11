@@ -28,6 +28,14 @@ export interface AssetDetail extends Omit<Asset, "source_systems"> {
   source_systems: SourceSystemRecord[];
 }
 
+export interface HistoryEntry {
+  changed_at: string;
+  changed_by: string;
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+}
+
 export interface Page<T> {
   items: T[];
   total: number;
@@ -90,6 +98,8 @@ export const api = {
   assets: (params: Record<string, string> = {}) =>
     request<Page<Asset>>(`/api/v1/assets?${new URLSearchParams(params)}`),
   asset: (enterpriseAssetId: string) => request<AssetDetail>(`/api/v1/assets/${encodeURIComponent(enterpriseAssetId)}`),
+  assetHistory: (enterpriseAssetId: string, params: Record<string, string> = {}) =>
+    request<Page<HistoryEntry>>(`/api/v1/assets/${encodeURIComponent(enterpriseAssetId)}/history?${new URLSearchParams(params)}`),
   assetSummary: () => request<AssetSummary>("/api/v1/assets/summary"),
   brief: (assetId: string) =>
     request<AgentResponse>(`/api/v1/assets/${encodeURIComponent(assetId)}/brief`, "POST"),

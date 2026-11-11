@@ -50,6 +50,16 @@ class AssetDetail(Asset):
     source_systems: list[SourceSystemRecord] = Field(default_factory=list)   # type: ignore[assignment]
 
 
+class HistoryEntry(BaseModel):
+    """One recorded change to an asset (PRD Module 2 requirement 10, append-only history)."""
+
+    changed_at: datetime
+    changed_by: str
+    field: str
+    old_value: str | None
+    new_value: str | None
+
+
 class AssetSummary(BaseModel):
     """Enterprise-wide asset KPIs, computed in SQL over the whole inventory."""
 
