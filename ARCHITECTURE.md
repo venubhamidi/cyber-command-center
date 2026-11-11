@@ -221,7 +221,7 @@ Rows loaded from mocks carry `source_system` starting with `mock_` and the tile 
 formula version is stored on every snapshot, so changing a weight never rewrites history.
 
 Tests at the seams: hand-computed expected values for all eight KPIs over the seed; an all-unknown
-fleet gives 0 percent patch compliance; the same CVE on one asset from two scanners counts once;
+fleet gives no patch compliance value (unknown, never 0 or 100); the same CVE on one asset from two scanners counts once;
 no snapshot means `no_history`, never zero; the snapshot command is idempotent per day; the
 permission matrix on `/dashboard`; top five ordered by rating then updated_at with all nine PRD
 fields. No evals: nothing calls a model.

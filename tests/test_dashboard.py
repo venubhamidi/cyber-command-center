@@ -1,7 +1,10 @@
 """Executive dashboard (PRD Module 1): tables, mock connectors, KPI math, snapshots, endpoint."""
+from datetime import UTC, datetime
+
 import pytest
 
 from ccc.config import MIGRATIONS_DIR, settings
+from ccc.dashboard import compute_kpis
 from ccc.ingest import ingest_csv
 from ccc.ingest_sources import ingest_feed, ingest_sources
 from ccc.plugins.mock_connectors import Feed
@@ -75,3 +78,74 @@ def test_a_record_for_an_unregistered_asset_is_skipped_and_the_rest_loads(seeded
         conn.commit()
     assert (r.inserted, r.skipped_unknown_asset, r.marked_stale) == (1, 1, 15)
     assert _count("findings") == 16
+
+
+# --- Ticket 03: KPI math --------------------------------------------------------------------------
+
+NOW = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
+
+
+def _kpis(now=NOW):
+    with get_conn(settings.database_url) as conn:
+        return compute_kpis(conn, now=now)
+
+
+def test_every_kpi_matches_the_hand_count_over_the_mock_data(seeded):
+    """Expected values were counted by hand from ccc/mock/*.json and ccc/sample_assets.csv (see the
+    comments), with "now" fixed at 2026-11-10 12:00 UTC."""
+    k = _kpis()
+    assert k["critical_assets"].value == 3                 # EA-000001, EA-000002, EA-000005: critical and active
+    assert k["vulnerability_exposure"].value == 7          # open critical/high, one per (cve, asset): EA1 x3, EA2, EA3, EA5, EA6
+    assert k["patch_compliance"].value == 33.3             # compliant 1 / applicable 3 (compliant, missing, failed)
+    assert k["nist_compliance"].value == 59.1              # (5 x 1.0 + 3 x 0.5) / 11 applicable (PE-3 not applicable)
+    assert k["open_incidents"].value == 2                  # INC-2041, INC-2039
+    assert k["remediation_sla"].value == 42.9              # within 3 / eligible 7 (4 closed + 3 open past due)
+    assert k["enterprise_risk_score"].value == 56.9        # mean(70, 66.7, 40.9, 50)
+    assert k["security_posture"].value == 43.1             # 100 - 56.9
+    assert k["patch_compliance"].source_systems == ["mock_sccm"]
+    assert k["patch_compliance"].data_as_of.isoformat() == "2026-11-10T05:30:00+00:00"
+    assert k["critical_assets"].source_systems == ["asset_db_csv"]
+    assert all(v.formula_version == "v0" for v in k.values())
+
+
+def test_sla_counts_a_finding_as_eligible_only_once_its_due_date_has_passed(seeded):
+    """With now at 2026-10-28 only TEN-10001 (due 10-27) is overdue among the open findings, so
+    eligible = 4 closed + 1 overdue and within = 3 of the closed ones."""
+    k = _kpis(now=datetime(2026, 10, 28, 12, 0, tzinfo=UTC))
+    assert k["remediation_sla"].value == 60.0
+
+
+def test_unknown_patch_status_is_never_compliant(sample_csv):
+    ingest_csv(sample_csv)
+    feed = Feed("mock_sccm", "patch_status", "2026-11-10T05:30:00Z", [
+        {"source_record_id": f"SCCM-{n}", "enterprise_asset_id": f"EA-00000{n}", "state": state, "missing_count": 0}
+        for n, state in enumerate(("unknown", "unknown", "offline", "exempt", "non_applicable", "unknown"), start=1)])
+    with get_conn(settings.database_url) as conn:
+        ingest_feed(conn, feed)
+        conn.commit()
+    k = _kpis()
+    assert k["patch_compliance"].value is None             # no applicable system: unknown, not 100 and not 0
+    assert k["enterprise_risk_score"].value is None        # nothing else loaded either: no favourable default
+
+
+def test_the_same_cve_on_one_asset_from_two_scanners_counts_once(seeded):
+    feed = Feed("mock_defender", "findings", "2026-11-10T07:00:00Z", [
+        {"source_record_id": "DEF-1", "enterprise_asset_id": "EA-000001", "cve": "CVE-2024-3094", "title": "xz backdoor",
+         "severity": "critical", "status": "open", "first_seen_at": "2026-10-21T03:00:00Z", "last_seen_at": "2026-11-10T03:00:00Z"},
+        {"source_record_id": "DEF-2", "enterprise_asset_id": "EA-000004", "cve": "CVE-2024-3094", "title": "xz backdoor",
+         "severity": "critical", "status": "open", "first_seen_at": "2026-11-09T03:00:00Z", "last_seen_at": "2026-11-10T03:00:00Z"},
+    ])
+    with get_conn(settings.database_url) as conn:
+        ingest_feed(conn, feed)
+        conn.commit()
+    k = _kpis()
+    assert k["vulnerability_exposure"].value == 8          # DEF-1 duplicates TEN-10001; DEF-2 is new on EA-000004
+    assert k["vulnerability_exposure"].source_systems == ["mock_defender", "mock_tenable"]
+
+
+def test_stale_rows_are_left_out_of_every_count(seeded):
+    with get_conn(settings.database_url) as conn:
+        ingest_feed(conn, Feed("mock_chronicle", "incidents", "2026-11-11T06:10:00Z", []))   # the source now reports nothing
+        conn.commit()
+    k = _kpis()
+    assert k["open_incidents"].value == 0 and k["open_incidents"].source_systems == []
