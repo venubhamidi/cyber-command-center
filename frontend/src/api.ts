@@ -17,6 +17,17 @@ export interface Asset {
   data_completeness: { complete: boolean; missing_fields: string[] } | null;
 }
 
+export interface SourceSystemRecord {
+  source_system: string;
+  source_record_id: string;
+  first_seen_at: string;
+  last_seen_at: string;
+}
+
+export interface AssetDetail extends Omit<Asset, "source_systems"> {
+  source_systems: SourceSystemRecord[];
+}
+
 export interface Page<T> {
   items: T[];
   total: number;
@@ -78,7 +89,7 @@ async function request<T>(path: string, method = "GET"): Promise<T> {
 export const api = {
   assets: (params: Record<string, string> = {}) =>
     request<Page<Asset>>(`/api/v1/assets?${new URLSearchParams(params)}`),
-  asset: (enterpriseAssetId: string) => request<Asset>(`/api/v1/assets/${encodeURIComponent(enterpriseAssetId)}`),
+  asset: (enterpriseAssetId: string) => request<AssetDetail>(`/api/v1/assets/${encodeURIComponent(enterpriseAssetId)}`),
   assetSummary: () => request<AssetSummary>("/api/v1/assets/summary"),
   brief: (assetId: string) =>
     request<AgentResponse>(`/api/v1/assets/${encodeURIComponent(assetId)}/brief`, "POST"),

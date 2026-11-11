@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ccc.agents.asset_agent import summarize_asset
-from ccc.api.schemas import Asset, AssetSummary, DataCompleteness, UsageRow
+from ccc.api.schemas import Asset, AssetDetail, AssetSummary, DataCompleteness, SourceSystemRecord, UsageRow
 from ccc.assets import asset_flags, gap_counts, missing_required_fields
 from harness.agents.contract import AgentResponse
 from harness.app import db_url
@@ -64,16 +64,21 @@ def asset_summary(_: Principal = Depends(require("assets:read")), db: str = Depe
         return AssetSummary(**gap_counts(conn))
 
 
-@router.get("/assets/{enterprise_asset_id}", response_model=Asset)
+@router.get("/assets/{enterprise_asset_id}", response_model=AssetDetail)
 def get_asset(enterprise_asset_id: str, _: Principal = Depends(require("assets:read")),
-              db: str = Depends(db_url)) -> Asset:
+              db: str = Depends(db_url)) -> AssetDetail:
     """PRD §8 asset details, addressed by the enterprise asset ID (the one key; see ccc/CONTEXT.md)."""
     with get_conn(db) as conn:
         row = conn.execute(f"{ASSET_SELECT} WHERE a.enterprise_asset_id = %s GROUP BY a.id",
                            (enterprise_asset_id,)).fetchone()
-    if row is None:
-        raise HTTPException(404, "Asset not found")
-    return _asset(row)
+        if row is None:
+            raise HTTPException(404, "Asset not found")
+        sources = conn.execute(
+            "SELECT source_system, source_record_id, first_seen_at, last_seen_at FROM asset_sources "
+            "WHERE asset_id = %s ORDER BY source_system", (row["id"],)).fetchall()
+    asset = _asset(row)
+    return AssetDetail(**asset.model_dump(exclude={"source_systems"}),
+                       source_systems=[SourceSystemRecord(**s) for s in sources])
 
 
 @router.post("/assets/{enterprise_asset_id}/brief", response_model=AgentResponse)

@@ -70,8 +70,10 @@ def test_asset_detail_carries_flags_and_completeness_from_the_rules(client):
 
 
 def test_asset_carries_freshness_and_source_systems(client):
+    row = client.get("/api/v1/assets?limit=1", headers=CISO).json()["items"][0]
+    assert row["last_seen_at"] and row["source_systems"] == ["asset_db_csv"]
     a = client.get("/api/v1/assets/EA-000001", headers=CISO).json()
-    assert a["last_seen_at"] and a["source_systems"] == ["asset_db_csv"]
+    assert a["source_systems"][0]["source_system"] == "asset_db_csv" and a["source_systems"][0]["source_record_id"]
 
 
 def test_unknown_asset_is_404(client):
@@ -110,3 +112,41 @@ def test_summary_counts_whole_inventory_not_one_page(client):
 def test_summary_requires_permission(client):
     assert client.get("/api/v1/assets/summary").status_code == 401
     assert client.get("/api/v1/assets/summary", headers=BIZ).status_code == 403
+
+
+def test_asset_detail_lists_each_source_system_with_first_and_last_seen(client, sample_csv):
+    """Ticket 06: the detail carries one entry per source system; the inventory keeps names only."""
+    ingest_csv(sample_csv, source_system="sccm")                       # a second source reports the same assets
+    a = client.get("/api/v1/assets/EA-000001", headers=CISO).json()
+    assert [s["source_system"] for s in a["source_systems"]] == ["asset_db_csv", "sccm"]
+    for s in a["source_systems"]:
+        assert s["first_seen_at"] and s["last_seen_at"]
+    row = client.get("/api/v1/assets?limit=1", headers=CISO).json()["items"][0]
+    assert row["source_systems"] == ["asset_db_csv", "sccm"]
+
+
+def test_asset_history_endpoint_needs_permission_and_paginates(client, sample_csv, tmp_path):
+    """Ticket 07: newest first, each entry says when, who, which field, old and new value."""
+    text = sample_csv.read_text().replace("hr-portal-web01,10.20.2.40,00:1A:2B:3C:4D:03,server,,",
+                                          "hr-portal-web01,10.20.2.40,00:1A:2B:3C:4D:03,server,k.nguyen,")
+    (tmp_path / "owner.csv").write_text(text)
+    ingest_csv(tmp_path / "owner.csv")
+    lines = sample_csv.read_text().splitlines()
+    (tmp_path / "shorter.csv").write_text("\n".join(line for line in lines if not line.startswith("EA-000003")) + "\n")
+    ingest_csv(tmp_path / "shorter.csv")
+
+    assert client.get("/api/v1/assets/EA-000003/history").status_code == 401
+    assert client.get("/api/v1/assets/EA-000003/history", headers=BIZ).status_code == 403
+    assert client.get("/api/v1/assets/EA-999999/history", headers=CISO).status_code == 404
+    assert client.get("/api/v1/assets/EA-000003/history?limit=0", headers=CISO).status_code == 422
+    assert client.get("/api/v1/assets/EA-000003/history?limit=9999", headers=CISO).status_code == 422
+
+    body = client.get("/api/v1/assets/EA-000003/history", headers=CISO).json()
+    assert body["total"] == 2
+    newest, oldest = body["items"]
+    assert (newest["field"], newest["old_value"], newest["new_value"]) == ("lifecycle_state", "active", "potentially_inactive")
+    assert (oldest["field"], oldest["old_value"], oldest["new_value"], oldest["changed_by"]) == ("asset_owner", None, "k.nguyen", "ingest:csv")
+    assert newest["changed_at"] >= oldest["changed_at"]
+    page = client.get("/api/v1/assets/EA-000003/history?limit=1&offset=1", headers=CISO).json()
+    assert (page["total"], page["limit"], page["offset"], page["items"][0]["field"]) == (2, 1, 1, "asset_owner")
+    assert client.get("/api/v1/assets/EA-000001/history", headers=CISO).json()["total"] == 0

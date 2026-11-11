@@ -35,6 +35,21 @@ class Asset(BaseModel):
     data_completeness: DataCompleteness | None = None
 
 
+class SourceSystemRecord(BaseModel):
+    """One source system's report of an asset (PRD §7 provenance): who reported it and when."""
+
+    source_system: str
+    source_record_id: str
+    first_seen_at: datetime
+    last_seen_at: datetime
+
+
+class AssetDetail(Asset):
+    """The asset detail (PRD §11): the inventory row plus each source system's first and last sighting."""
+
+    source_systems: list[SourceSystemRecord] = Field(default_factory=list)   # type: ignore[assignment]
+
+
 class AssetSummary(BaseModel):
     """Enterprise-wide asset KPIs, computed in SQL over the whole inventory."""
 
