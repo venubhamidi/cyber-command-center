@@ -12,7 +12,7 @@ import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Typography from "@mui/material/Typography";
-import { api, type AssetDetail, type HistoryEntry } from "./api";
+import { api, type AgentResponse, type AssetDetail, type HistoryEntry, type Me } from "./api";
 
 const PROFILE: { key: keyof AssetDetail; label: string }[] = [
   { key: "hostname", label: "Name" }, { key: "enterprise_asset_id", label: "Enterprise asset ID" },
@@ -77,12 +77,55 @@ function History({ id }: { id: string }) {
   );
 }
 
+function canRunAgents(me: Me | null): boolean {
+  return !!me && (me.permissions.includes("agents:run") || me.permissions.includes("*"));
+}
+
+// The seven-part answer (PRD Module 7). Every part is shown; an empty one reads "unavailable".
+function Brief({ id }: { id: string }) {
+  const [state, setState] = useState<{ running: boolean; result?: AgentResponse; error?: string } | null>(null);
+
+  function run() {
+    setState({ running: true });
+    api.brief(id).then((result) => setState({ running: false, result })).catch((e: Error) => setState({ running: false, error: e.message }));
+  }
+  const out = state?.result?.status === "succeeded" ? state.result.output : null;
+  const part = (v: string | undefined) => v || "unavailable";
+
+  return (
+    <Paper variant="outlined" sx={{ p: 2 }} aria-live="polite">
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+        <Typography variant="subtitle2" color="text.secondary">Assistant brief <span className="advisory">advisory</span></Typography>
+        <Button variant="contained" size="small" onClick={run} disabled={state?.running}>{state?.running ? "Running…" : "Brief"}</Button>
+      </Box>
+      {state?.error && <div className="error" style={{ marginTop: 12 }}>Brief failed: {state.error}</div>}
+      {state?.result?.status === "failed" && <div className="error" style={{ marginTop: 12 }}>Agent failed: {state.result.error ?? "unknown reason"}</div>}
+      {out && (
+        <Stack spacing={1} sx={{ mt: 1.5 }}>
+          <Typography variant="body2"><strong>Executive summary.</strong> {part(out.executive_summary)}</Typography>
+          <Typography variant="body2"><strong>Supporting facts.</strong> {out.supporting_facts ? "The asset record as stored (shown above); flags: " + ((out.data_quality_flags ?? []).map((f) => f.replaceAll("_", " ")).join(", ") || "none") + "." : "unavailable"}</Typography>
+          <Typography variant="body2"><strong>Business impact.</strong> {part(out.business_impact)}</Typography>
+          <Typography variant="body2"><strong>Recommended action.</strong> {part(out.recommended_action)}</Typography>
+          <Typography variant="body2"><strong>Source references.</strong> {out.source_references?.length ? out.source_references.join(", ") : "unavailable"}</Typography>
+          <Typography variant="body2"><strong>Last updated.</strong> {out.last_updated ? when(out.last_updated) : "unavailable"}</Typography>
+          <Typography variant="body2"><strong>Data completeness.</strong> {out.data_completeness ? (out.data_completeness.complete ? "complete" : `incomplete; missing ${out.data_completeness.missing_fields.join(", ")}`) : "unavailable"}</Typography>
+          {state?.result && state.result.guardrail_events.length > 0 && (
+            <Typography variant="caption" color="text.secondary">Guardrails: {state.result.guardrail_events.join(", ")}</Typography>
+          )}
+        </Stack>
+      )}
+    </Paper>
+  );
+}
+
 export function AssetDetailPage({ id, onBack }: { id: string; onBack: () => void }) {
   const [asset, setAsset] = useState<AssetDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
 
   useEffect(() => {
     api.asset(id).then(setAsset).catch((e: Error) => setError(e.message));
+    api.me().then(setMe).catch(() => setMe(null));
   }, [id]);
 
   return (
@@ -142,6 +185,8 @@ export function AssetDetailPage({ id, onBack }: { id: string; onBack: () => void
               </TableBody>
             </Table>
           </Paper>
+
+          {canRunAgents(me) && <Brief id={id} />}
 
           <History id={id} />
         </>

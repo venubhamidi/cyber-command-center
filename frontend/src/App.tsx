@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
-import { api, type AgentResponse, type Asset, type AssetSummary, type Health, type Page } from "./api";
+import { api, type Asset, type AssetSummary, type Health, type Page } from "./api";
 import { AssetDetailPage } from "./AssetDetailPage";
 import { GapChart } from "./GapChart";
 import { Shell } from "./Shell";
@@ -23,12 +23,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [criticality, setCriticality] = useState<string>("");
   const [selected, navigate] = useAssetRoute();
-  const [brief, setBrief] = useState<{ id: string; result?: AgentResponse; error?: string } | null>(null);
-
-  function runBrief(id: string) {
-    setBrief({ id });
-    api.brief(id).then((result) => setBrief({ id, result })).catch((e: Error) => setBrief({ id, error: e.message }));
-  }
 
   useEffect(() => {
     api.health().then(setHealth).catch(() => setHealth(null));
@@ -91,7 +85,7 @@ export default function App() {
         <thead>
           <tr>
             <th>Asset ID</th><th>Hostname</th><th>Type</th><th>Owner</th><th>Business unit</th>
-            <th>Service</th><th>Criticality</th><th>Env</th><th>State</th><th>Freshness</th><th>Sources</th><th />
+            <th>Service</th><th>Criticality</th><th>Env</th><th>State</th><th>Freshness</th><th>Sources</th>
           </tr>
         </thead>
         <tbody>
@@ -108,33 +102,10 @@ export default function App() {
               <td><span className={`pill state-${a.lifecycle_state}`}>{a.lifecycle_state.replace("_", " ")}</span></td>
               <td>{freshness(a.last_seen_at)}</td>
               <td className="mono small">{a.source_systems.join(", ")}</td>
-              <td><button onClick={() => runBrief(a.enterprise_asset_id)}>Brief</button></td>
             </tr>
           ))}
         </tbody>
       </table>
-
-      {brief && (
-        <section className="brief" aria-live="polite">
-          <h2>Assistant brief on {brief.id} <span className="advisory">advisory</span></h2>
-          {!brief.result && !brief.error && <p className="sub">Running…</p>}
-          {brief.error && <div className="error">Brief failed: {brief.error}</div>}
-          {brief.result?.status === "failed" && <div className="error">Agent failed: {brief.result.error}</div>}
-          {brief.result?.status === "succeeded" && (
-            <>
-              <p>{brief.result.output.executive_summary}</p>
-              <p><strong>Business impact:</strong> {brief.result.output.business_impact}</p>
-              <p><strong>Recommended action:</strong> {brief.result.output.recommended_action}</p>
-              <p className="small">
-                Gaps (computed by rules): {brief.result.output.data_quality_flags?.join(", ") || "none"} · missing fields:{" "}
-                {brief.result.output.data_completeness?.missing_fields.join(", ") || "none"} · sources:{" "}
-                {brief.result.output.source_references?.join(", ")} · last updated {brief.result.output.last_updated}
-                {brief.result.guardrail_events.length > 0 && ` · guardrails: ${brief.result.guardrail_events.join(", ")}`}
-              </p>
-            </>
-          )}
-        </section>
-      )}
     </Shell>
   );
 }

@@ -70,6 +70,14 @@ class AssetSummary(BaseModel):
     data_as_of: datetime | None   # newest last_seen_at; None when the inventory is empty
 
 
+class Me(BaseModel):
+    """The caller, as the role table resolves them (PRD §2 personas)."""
+
+    subject: str
+    roles: list[str]
+    permissions: list[str]
+
+
 class UsageRow(BaseModel):
     agent_id: str | None
     provider: str

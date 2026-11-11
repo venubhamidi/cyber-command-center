@@ -16,6 +16,7 @@ The PRD (`docs/PRD.pdf`) is the requirements input, not this design.
    │ FastAPI  (harness/app.py)                                          │
    │  AuditMiddleware ─► RateLimit ─► require("assets:read"|"agents:run")│
    │                                                                    │
+   │  GET  /me                             caller's persona + permissions│
    │  GET  /assets                         inventory (Page[Asset])      │
    │  GET  /assets/summary                 KPIs, counted in SQL         │
    │  GET  /assets/{eaid}          ──┐     profile + flags + completeness│

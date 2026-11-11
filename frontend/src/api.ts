@@ -63,10 +63,17 @@ export interface Health {
   harness_version: string;
 }
 
+export interface Me {
+  subject: string;
+  roles: string[];
+  permissions: string[];
+}
+
 export interface AgentResponse {
   status: "succeeded" | "failed";
   output: {
     executive_summary?: string;
+    supporting_facts?: Record<string, unknown>;
     business_impact?: string;
     recommended_action?: string;
     source_references?: string[];
@@ -106,5 +113,6 @@ export const api = {
   assetSummary: () => request<AssetSummary>("/api/v1/assets/summary"),
   brief: (assetId: string) =>
     request<AgentResponse>(`/api/v1/assets/${encodeURIComponent(assetId)}/brief`, "POST"),
+  me: () => request<Me>("/api/v1/me"),
   health: () => fetch("/api/v1/platform/health").then((r) => r.json() as Promise<Health>),
 };

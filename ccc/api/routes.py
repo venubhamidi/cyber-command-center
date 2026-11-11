@@ -9,6 +9,7 @@ from ccc.api.schemas import (
     AssetSummary,
     DataCompleteness,
     HistoryEntry,
+    Me,
     SourceSystemRecord,
     UsageRow,
 )
@@ -17,9 +18,15 @@ from harness.agents.contract import AgentResponse
 from harness.app import db_url
 from harness.db import get_conn
 from harness.pagination import Page
-from harness.security import Principal, require
+from harness.security import Principal, get_principal, require
 
 router = APIRouter(prefix="/api/v1")
+
+
+@router.get("/me", response_model=Me)
+def me(p: Principal = Depends(get_principal)) -> Me:
+    """Who is calling and what they may do, so the screen shows only the actions this persona has."""
+    return Me(subject=p.subject, roles=sorted(p.roles), permissions=sorted(p.permissions))
 
 ASSET_SELECT = """
 SELECT a.id, a.enterprise_asset_id, a.hostname, host(a.ip_address) AS ip_address,

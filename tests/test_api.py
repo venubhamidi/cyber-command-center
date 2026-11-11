@@ -150,3 +150,12 @@ def test_asset_history_endpoint_needs_permission_and_paginates(client, sample_cs
     page = client.get("/api/v1/assets/EA-000003/history?limit=1&offset=1", headers=CISO).json()
     assert (page["total"], page["limit"], page["offset"], page["items"][0]["field"]) == (2, 1, 1, "asset_owner")
     assert client.get("/api/v1/assets/EA-000001/history", headers=CISO).json()["total"] == 0
+
+
+def test_me_tells_the_browser_who_is_calling_and_what_they_may_do(client):
+    """Ticket 10: the screen shows the Brief button only to personas with agents:run."""
+    assert client.get("/api/v1/me").status_code == 401
+    me = client.get("/api/v1/me", headers=CISO).json()
+    assert me["subject"] == "ciso@example.com" and me["roles"] == ["ciso"] and "agents:run" in me["permissions"]
+    auditor = client.get("/api/v1/me", headers={"Authorization": "Bearer dev-auditor-token"}).json()
+    assert "agents:run" not in auditor["permissions"] and "assets:read" in auditor["permissions"]
