@@ -1,8 +1,11 @@
 # Cyber Command Center — domain rules for Claude Code
 
 Enterprise cybersecurity intelligence platform for CIO, CISO, CTO and Internal Audit. Requirements:
-`docs/PRD.pdf` (v1.0); cite the PRD section in a docstring when a rule comes from it. The root
-`CLAUDE.md` applies here as well; this file adds only what is specific to the Command Center.
+`docs/PRD.pdf` (v1.0); cite the PRD section in a docstring when a rule comes from it. The PRD is
+the requirements input, not the design: understand the need behind each item and build it the
+harness way; where the PRD's wording pulls against a harness rule, the harness wins and the
+difference is a `DECISIONS.md` row or an ADR. The root `CLAUDE.md` applies here as well; this
+file adds only what is specific to the Command Center.
 Terms, glossary: `ccc/CONTEXT.md`. Open questions: `ccc/DECISIONS.md` ("Decide first" comes first).
 Decision records: `docs/adr/`.
 
