@@ -1,12 +1,23 @@
 import { useEffect, useState } from "react";
 import Paper from "@mui/material/Paper";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
-import { api, type Asset, type AssetSummary, type Health, type Page } from "./api";
+import { api, type Asset, type AssetSummary, type Health, type Page, type RecordView } from "./api";
 import { AssetDetailPage } from "./AssetDetailPage";
+import { DashboardPage } from "./DashboardPage";
 import { GapChart } from "./GapChart";
+import { RecordsPage } from "./RecordsPage";
 import { Shell } from "./Shell";
-import { useAssetRoute } from "./useAssetRoute";
+import { useRoute, type Route } from "./useRoute";
 import "./App.css";
+
+const RECORD_VIEWS: RecordView[] = ["findings", "patch-status", "controls", "incidents", "risks"];
+const SUBTITLES: Record<string, string> = {
+  dashboard: "Executive Security Dashboard", assets: "Enterprise Asset Intelligence",
+  findings: "Vulnerability Management", "patch-status": "Patch Compliance", controls: "NIST 800-53 Control Compliance",
+  incidents: "Security Operations", risks: "Executive Risk Intelligence",
+};
 
 // PRD Module 1: every figure carries data freshness and source systems.
 function freshness(iso: string): string {
@@ -16,16 +27,39 @@ function freshness(iso: string): string {
   return `${Math.round(mins / 1440)} d ago`;
 }
 
+// The dashboard is the landing page (D-041); the inventory and the drill-down lists are views.
 export default function App() {
-  const [page, setPage] = useState<Page<Asset> | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
+  const [route, go] = useRoute();
+  const view = route.view ?? "dashboard";
+
+  useEffect(() => { api.health().then(setHealth).catch(() => setHealth(null)); }, []);
+
+  let body;
+  if (route.asset) body = <AssetDetailPage id={route.asset} onBack={() => go({ view: "assets" })} />;
+  else if (view === "assets") body = <Inventory route={route} go={go} />;
+  else if ((RECORD_VIEWS as string[]).includes(view)) body = <RecordsPage view={view as RecordView} />;
+  else body = <DashboardPage go={go} />;
+
+  return (
+    <Shell health={health} subtitle={SUBTITLES[view] ?? SUBTITLES.dashboard}>
+      <Tabs value={view === "assets" ? "assets" : "dashboard"} onChange={(_, v: string) => go({ view: v })} sx={{ mb: 2 }}>
+        <Tab value="dashboard" label="Dashboard" />
+        <Tab value="assets" label="Assets" />
+      </Tabs>
+      {body}
+    </Shell>
+  );
+}
+
+function Inventory({ route, go }: { route: Route; go: (r: Route) => void }) {
+  const [page, setPage] = useState<Page<Asset> | null>(null);
   const [summary, setSummary] = useState<AssetSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [criticality, setCriticality] = useState<string>("");
-  const [selected, navigate] = useAssetRoute();
+  const criticality = route.criticality ?? "";
+  const navigate = (id: string) => go({ ...route, view: "assets", asset: id });
 
   useEffect(() => {
-    api.health().then(setHealth).catch(() => setHealth(null));
     // KPIs are counted by the backend over the whole inventory, never from the rows on screen.
     api.assetSummary().then(setSummary).catch(() => setSummary(null));
   }, []);
@@ -40,16 +74,8 @@ export default function App() {
 
   const items = page?.items ?? [];
 
-  if (selected) {
-    return (
-      <Shell health={health}>
-        <AssetDetailPage id={selected} onBack={() => navigate(null)} />
-      </Shell>
-    );
-  }
-
   return (
-    <Shell health={health}>
+    <>
       <section className="kpis">
         <Kpi label="Assets in inventory" value={summary?.total_assets ?? "—"} />
         <Kpi label="Without owner" value={summary?.without_owner ?? "—"} warn={(summary?.without_owner ?? 0) > 0} />
@@ -69,7 +95,7 @@ export default function App() {
       <section className="toolbar">
         <label>
           Criticality
-          <select value={criticality} onChange={(e) => setCriticality(e.target.value)}>
+          <select value={criticality} onChange={(e) => { const { criticality: _, ...rest } = route; go(e.target.value ? { ...rest, view: "assets", criticality: e.target.value } : { ...rest, view: "assets" }); }}>
             <option value="">All</option>
             {["critical", "high", "medium", "low", "unknown"].map((c) => (
               <option key={c} value={c}>{c}</option>
@@ -91,7 +117,7 @@ export default function App() {
         <tbody>
           {items.map((a) => (
             <tr key={a.id}>
-              <td className="mono"><a href={`?asset=${a.enterprise_asset_id}`} onClick={(e) => { e.preventDefault(); navigate(a.enterprise_asset_id); }}>{a.enterprise_asset_id}</a></td>
+              <td className="mono"><a href={`?view=assets&asset=${a.enterprise_asset_id}`} onClick={(e) => { e.preventDefault(); navigate(a.enterprise_asset_id); }}>{a.enterprise_asset_id}</a></td>
               <td className="mono">{a.hostname ?? <Missing />}</td>
               <td>{a.asset_type}</td>
               <td>{a.asset_owner ?? <Missing />}</td>
@@ -106,7 +132,7 @@ export default function App() {
           ))}
         </tbody>
       </table>
-    </Shell>
+    </>
   );
 }
 

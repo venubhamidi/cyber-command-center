@@ -66,6 +66,7 @@ control and risk modules being designed: D-029, D-033, D-036.
 | D-039 | Decided | Module 1 | Enterprise Risk Score and Security Posture have no formula (D-007). | Provisional v0 in `ccc/dashboard.py`, `FORMULA_VERSION` stored on every snapshot; posture = 100 - risk score; tile labelled provisional. Decided by the owner, 2026-11-10 (dashboard design, item 1). | CISO |
 | D-040 | Decided | Module 1 | Drill-down for modules not yet built. | Critical Assets drills to the inventory filtered by criticality; other tiles land on a plain read-only list of the underlying records; filters arrive with each module. Decided by the owner, 2026-11-10 (item 3). | Product Owner |
 | D-041 | Decided | Module 1 | Landing page. | The dashboard is the root; the inventory is a tab. Decided by the owner, 2026-11-10 (item 5). | Product Owner |
+| D-042 | Open | Module 1 | The PRD §2 persona table gives the CISO no `patch:read` or `incidents:read`, so the dashboard shows the patch and incident counts but the CISO cannot open the records behind them. | Role table unchanged; the tile hides the drill-down link for a caller without the permission. | CISO |
 
 ## Known gaps against the PRD
 

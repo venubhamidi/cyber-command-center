@@ -11,7 +11,7 @@ import Box from "@mui/material/Box";
 import type { Health } from "./api";
 import { theme } from "./theme";
 
-export function Shell({ health, children }: { health: Health | null; children: ReactNode }) {
+export function Shell({ health, subtitle = "Executive Security Dashboard", children }: { health: Health | null; subtitle?: string; children: ReactNode }) {
   const label = health
     ? `API ${health.status} · db ${health.database} · login ${health.auth_provider} · model ${health.llm_provider} · harness ${health.harness_version}`
     : "API unreachable";
@@ -25,7 +25,7 @@ export function Shell({ health, children }: { health: Health | null; children: R
             <Typography variant="h6" component="h1" sx={{ fontSize: 20, fontWeight: 600, lineHeight: 1.2 }}>
               Cyber Command Center
             </Typography>
-            <Typography variant="body2" color="text.secondary">Enterprise Asset Intelligence</Typography>
+            <Typography variant="body2" color="text.secondary">{subtitle}</Typography>
           </Box>
           <Chip size="small" variant="outlined" color={color} label={label} sx={{ fontSize: 12 }} />
         </Toolbar>

@@ -116,3 +116,48 @@ export const api = {
   me: () => request<Me>("/api/v1/me"),
   health: () => fetch("/api/v1/platform/health").then((r) => r.json() as Promise<Health>),
 };
+
+// PRD Module 1: one tile. Types mirror ccc/api/schemas.py (Kpi, TopRisk, Dashboard, the list records).
+export interface Kpi {
+  kpi: string;
+  value: number | null;
+  unit: "count" | "percent" | "score";
+  previous_value: number | null;
+  previous_period: string | null;
+  trend: "up" | "down" | "flat" | "no_history";
+  good_direction: "up" | "down";
+  data_as_of: string | null;
+  source_systems: string[];
+  drilldown: string;
+  formula_version: string;
+  mock: boolean;
+}
+
+export interface TopRisk {
+  title: string;
+  business_unit: string | null;
+  business_service: string | null;
+  affected_assets: string[];
+  rating: Asset["criticality"];
+  business_impact: string;
+  owner: string | null;
+  recommended_action: string;
+  last_updated: string;
+  source_system: string;
+  model_version: string;
+}
+
+export interface Dashboard {
+  generated_at: string;
+  kpis: Kpi[];
+  top_risks: TopRisk[];
+}
+
+export type RecordView = "findings" | "patch-status" | "controls" | "incidents" | "risks";
+export type DrilldownRecord = Record<string, string | number | boolean | string[] | null>;
+
+export const recordsApi = {
+  dashboard: () => request<Dashboard>("/api/v1/dashboard"),
+  list: (view: RecordView, params: Record<string, string> = {}) =>
+    request<Page<DrilldownRecord>>(`/api/v1/${view}?${new URLSearchParams(params)}`),
+};
