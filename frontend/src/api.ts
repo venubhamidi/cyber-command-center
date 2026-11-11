@@ -76,6 +76,7 @@ async function request<T>(path: string, method = "GET"): Promise<T> {
 export const api = {
   assets: (params: Record<string, string> = {}) =>
     request<Page<Asset>>(`/api/v1/assets?${new URLSearchParams(params)}`),
+  asset: (enterpriseAssetId: string) => request<Asset>(`/api/v1/assets/${encodeURIComponent(enterpriseAssetId)}`),
   assetSummary: () => request<AssetSummary>("/api/v1/assets/summary"),
   brief: (assetId: string) =>
     request<AgentResponse>(`/api/v1/assets/${encodeURIComponent(assetId)}/brief`, "POST"),

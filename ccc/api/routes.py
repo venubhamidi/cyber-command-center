@@ -58,10 +58,13 @@ def asset_summary(_: Principal = Depends(require("assets:read")), db: str = Depe
         return AssetSummary(**gap_counts(conn))
 
 
-@router.get("/assets/{asset_id}", response_model=Asset)
-def get_asset(asset_id: int, _: Principal = Depends(require("assets:read")), db: str = Depends(db_url)) -> Asset:
+@router.get("/assets/{enterprise_asset_id}", response_model=Asset)
+def get_asset(enterprise_asset_id: str, _: Principal = Depends(require("assets:read")),
+              db: str = Depends(db_url)) -> Asset:
+    """PRD §8 asset details, addressed by the enterprise asset ID (the one key; see ccc/CONTEXT.md)."""
     with get_conn(db) as conn:
-        row = conn.execute(f"{ASSET_SELECT} WHERE a.id = %s GROUP BY a.id", (asset_id,)).fetchone()
+        row = conn.execute(f"{ASSET_SELECT} WHERE a.enterprise_asset_id = %s GROUP BY a.id",
+                           (enterprise_asset_id,)).fetchone()
     if row is None:
         raise HTTPException(404, "Asset not found")
     return Asset(**row)

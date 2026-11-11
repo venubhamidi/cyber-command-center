@@ -50,13 +50,21 @@ def test_validation_rejects_bad_limit(client):
     assert client.get("/api/v1/assets?limit=9999", headers=CISO).status_code == 422
 
 
+def test_asset_is_addressed_by_enterprise_asset_id(client):
+    assert client.get("/api/v1/assets/EA-000001").status_code == 401
+    assert client.get("/api/v1/assets/EA-000001", headers=BIZ).status_code == 403
+    a = client.get("/api/v1/assets/EA-000001", headers=CISO).json()
+    assert a["enterprise_asset_id"] == "EA-000001" and a["hostname"] == "fin-erp-db01"
+    assert client.get("/api/v1/assets/1", headers=CISO).status_code == 404        # the row id is not an address
+
+
 def test_asset_carries_freshness_and_source_systems(client):
-    a = client.get("/api/v1/assets/1", headers=CISO).json()
+    a = client.get("/api/v1/assets/EA-000001", headers=CISO).json()
     assert a["last_seen_at"] and a["source_systems"] == ["asset_db_csv"]
 
 
 def test_unknown_asset_is_404(client):
-    assert client.get("/api/v1/assets/999", headers=CISO).status_code == 404
+    assert client.get("/api/v1/assets/EA-999999", headers=CISO).status_code == 404
 
 
 def test_every_api_call_is_audited_including_denied(client):
