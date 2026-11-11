@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
 import { api, type AgentResponse, type Asset, type AssetSummary, type Health, type Page } from "./api";
+import { GapChart } from "./GapChart";
+import { Shell } from "./Shell";
 import "./App.css";
 
 // PRD Module 1: every figure carries data freshness and source systems.
@@ -40,19 +44,7 @@ export default function App() {
   const items = page?.items ?? [];
 
   return (
-    <main className="shell">
-      <header className="topbar">
-        <div>
-          <h1>Cyber Command Center</h1>
-          <p className="sub">Enterprise Asset Intelligence</p>
-        </div>
-        <div className={`health ${health?.status ?? "down"}`}>
-          {health
-            ? `API ${health.status} · db ${health.database} · login ${health.auth_provider} · model ${health.llm_provider} · harness ${health.harness_version}`
-            : "API unreachable"}
-        </div>
-      </header>
-
+    <Shell health={health}>
       <section className="kpis">
         <Kpi label="Assets in inventory" value={summary?.total_assets ?? "—"} />
         <Kpi label="Without owner" value={summary?.without_owner ?? "—"} warn={(summary?.without_owner ?? 0) > 0} />
@@ -62,6 +54,12 @@ export default function App() {
       <p className="asof">
         Whole inventory · data as of {summary?.data_as_of ? freshness(summary.data_as_of) : "unknown"}
       </p>
+      {summary && (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Typography variant="subtitle2" color="text.secondary">Data-quality gaps across the inventory</Typography>
+          <GapChart summary={summary} />
+        </Paper>
+      )}
 
       <section className="toolbar">
         <label>
@@ -126,7 +124,7 @@ export default function App() {
           )}
         </section>
       )}
-    </main>
+    </Shell>
   );
 }
 

@@ -5,14 +5,8 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
-.shell { max-width: 1400px; margin: 0 auto; padding: 24px 28px; }
-.topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-h1 { margin: 0; font-size: 22px; letter-spacing: .2px; }
-.sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
-.health { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); }
-.health.ok { border-color: #2a6b3f; color: #8fd19e; }
-.health.down, .health.degraded { border-color: #7a2d2d; color: #f1a7a7; }
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0 8px; }
+.sub { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 .asof { margin: 0 0 18px; font-size: 12px; color: var(--muted); }
 .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
 .kpi.warn { border-color: #5a4312; }
